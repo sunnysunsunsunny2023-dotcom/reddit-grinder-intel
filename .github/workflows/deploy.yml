@@ -1,0 +1,44 @@
+name: Deploy Reddit Intel
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'collector/**'
+      - 'analyst/**'
+      - 'deploy/**'
+      - 'sql/**'
+      - 'requirements.txt'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH to Aliyun
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.ALIYUN_HOST }}
+          username: ${{ secrets.ALIYUN_USER }}
+          key: ${{ secrets.ALIYUN_SSH_KEY }}
+          port: ${{ secrets.ALIYUN_PORT }}
+          script: |
+            set -euo pipefail
+            APP_DIR=/opt/reddit-intel
+            SRC_DIR=$APP_DIR/src
+            mkdir -p $APP_DIR
+            rm -rf $SRC_DIR
+            git clone --depth 1 https://github.com/sunnysunsunsunny2023-dotcom/reddit-grinder-intel.git $SRC_DIR
+            cat > $SRC_DIR/.env <<'EOF'
+            DATABASE_URL=${{ secrets.REDDIT_DATABASE_URL }}
+            REDDIT_API_KEY=${{ secrets.REDDIT_API_KEY }}
+            ANALYZER_API_BASE=${{ secrets.ANALYZER_API_BASE }}
+            ANALYZER_API_KEY=${{ secrets.ANALYZER_API_KEY }}
+            ANALYZER_MODEL=${{ secrets.ANALYZER_MODEL }}
+            REDDIT_USER_AGENT=${{ secrets.REDDIT_USER_AGENT }}
+            REDDIT_SLEEP_SECONDS=${{ secrets.REDDIT_SLEEP_SECONDS }}
+            EOF
+            chmod 600 $SRC_DIR/.env
+            bash $SRC_DIR/deploy/setup.sh

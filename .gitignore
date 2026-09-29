@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# 环境与密钥（严禁提交）
+.env
+*.env
+!deploy/*.service
+!deploy/*.timer
+
+# 本地产物
+output/
+*.log

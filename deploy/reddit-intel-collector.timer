@@ -1,0 +1,11 @@
+[Unit]
+Description=Reddit Grinder collector schedule (2x daily)
+
+[Timer]
+OnCalendar=*-*-* 00:30:00
+OnCalendar=*-*-* 12:30:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
