@@ -2,6 +2,9 @@
 
 > 每天从 Reddit **r/pourover** 与 **r/espresso** 拉取最新帖子，分析顾客对**磨豆机**的需求、反馈与趋势，同时监测品牌 **Geimori** 的产品口碑，产出可执行洞察（需求洞察 / 营销切入点 / 内容选题 / 产品改进方向）。
 
+> [!IMPORTANT]
+> **2026-09-29 架构更新：**后续实现以 [docs/COZE_DAILY_WEEKLY_SPEC.md](docs/COZE_DAILY_WEEKLY_SPEC.md) 为准。阿里云负责抓取、PostgreSQL 数据存储、去重、状态、统计和趋势计算；Coze 只负责 LLM 分析、Daily/Weekly HTML 报告与飞书推送。该规范优先于下方仍待重构的 JSONL / Coze state file 旧描述。
+
 ---
 
 ## 1. 项目目标
