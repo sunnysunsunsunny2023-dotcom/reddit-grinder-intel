@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reddit 磨豆机情报 · 每日报告 Demo — 2026-09-26</title>
+<style>
+  :root {
+    --canvas: #f6f0e4;
+    --surface: #fffdf7;
+    --surface-soft: #efe5d3;
+    --ink: #3b2a1b;
+    --ink-soft: #7a624c;
+    --line: #e2d5bf;
+    --accent: #a96a3b;
+    --accent-ink: #fffaf1;
+    --accent-strong: #7c4a24;
+    --signal-high: #8a6d3b;
+    --signal-high-bg: #f3e9d0;
+    --signal-mid: #a96a3b;
+    --signal-mid-bg: #f7e8d8;
+    --sent-pos: #5f7a46;
+    --sent-pos-bg: #e9f0dd;
+    --sent-neu: #8a857c;
+    --sent-neu-bg: #efece6;
+    --demo: #b0402e;
+    --demo-bg: #f9e6e0;
+    --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --pad-page: clamp(16px, 4vw, 40px);
+    --r-sm: 6px;
+    --r-md: 12px;
+    --focus-ring: 2px solid var(--accent);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.65;
+  }
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: var(--pad-page);
+  }
+
+  /* 顶部横幅 */
+  .topbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 3px solid var(--accent-strong);
+    padding-bottom: 14px;
+    margin-bottom: 20px;
+  }
+  .brand { font-size: 14px; font-weight: 700; letter-spacing: .08em; color: var(--accent-strong); text-transform: uppercase; }
+  .demo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--demo-bg);
+    color: var(--demo);
+    border: 1px solid var(--demo);
+    border-radius: 999px;
+    padding: 3px 12px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .demo-note {
+    margin: 0 0 24px;
+    padding: 10px 14px;
+    background: var(--demo-bg);
+    border-left: 4px solid var(--demo);
+    color: #7c3324;
+    font-size: 14px;
+    border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  }
+
+  /* 标题区 */
+  header.lead h1 {
+    margin: 0 0 6px;
+    font-size: clamp(26px, 4.4vw, 40px);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+  }
+  header.lead .sub {
+    color: var(--ink-soft);
+    font-size: 15px;
+    margin: 0 0 18px;
+  }
+
+  /* 当日结论条 */
+  .verdict {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    background: var(--accent-strong);
+    color: #fff8ec;
+    border-radius: var(--r-md);
+    padding: 16px 20px;
+    margin: 0 0 26px;
+  }
+  .verdict .tag {
+    flex: 0 0 auto;
+    background: rgba(255,255,255,.16);
+    border: 1px solid rgba(255,255,255,.35);
+    border-radius: 999px;
+    padding: 2px 12px;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .verdict p { margin: 0; font-size: 16px; }
+
+  /* KPI */
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin: 0 0 34px;
+  }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 14px 16px;
+  }
+  .kpi .num {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--accent-strong);
+  }
+  .kpi .num small { font-size: 16px; font-weight: 600; color: var(--ink-soft); }
+  .kpi .lbl { display: block; margin-top: 4px; font-size: 13px; color: var(--ink-soft); }
+  .kpi.hl { background: var(--accent-strong); border-color: var(--accent-strong); }
+  .kpi.hl .num, .kpi.hl .lbl { color: #fff8ec; }
+
+  /* 章节 */
+  section { margin: 0 0 38px; }
+  h2 {
+    font-size: 21px;
+    margin: 0 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--line);
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  h2 .en { font-size: 13px; font-weight: 500; color: var(--ink-soft); }
+
+  /* 热门帖表格 */
+  .table-scroll { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    overflow: hidden;
+  }
+  caption { text-align: left; font-size: 13px; color: var(--ink-soft); padding: 8px 2px; }
+  th, td {
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--line);
+  }
+  thead th {
+    background: var(--surface-soft);
+    font-size: 13px;
+    letter-spacing: .03em;
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; font-family: var(--font-mono); white-space: nowrap; }
+  .pill {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 1px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    background: var(--surface-soft);
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+  }
+  .pill.hot { background: var(--signal-high-bg); color: var(--signal-high); border-color: var(--signal-high); }
+  .pill.pos { background: var(--sent-pos-bg); color: var(--sent-pos); border-color: var(--sent-pos); }
+  .pill.neu { background: var(--sent-neu-bg); color: var(--sent-neu); border-color: #c9c4b8; }
+  .pill.demo { background: var(--demo-bg); color: var(--demo); border-color: var(--demo); }
+  .pill.idea { background: var(--signal-mid-bg); color: var(--signal-mid); border-color: var(--signal-mid); }
+
+  /* 洞察卡片 */
+  .insights { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .insight {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .insight h3 { margin: 0; font-size: 16px; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .strength { font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .strength.high { color: var(--signal-high); }
+  .strength.medium { color: var(--signal-mid); }
+  .bar { height: 6px; border-radius: 999px; background: var(--surface-soft); overflow: hidden; }
+  .bar > span { display: block; height: 100%; border-radius: 999px; }
+  .bar.high > span { width: 100%; background: var(--signal-high); }
+  .bar.medium > span { width: 55%; background: var(--signal-mid); }
+  .insight .meta { font-size: 12px; color: var(--ink-soft); }
+  .insight ul { margin: 0; padding-left: 18px; }
+  .insight li { margin: 4px 0; font-size: 14.5px; }
+  .insight .evidence { margin-top: auto; font-size: 13px; color: var(--ink-soft); border-top: 1px dashed var(--line); padding-top: 8px; }
+
+  /* 品牌反馈 */
+  .feedback {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 16px 18px;
+  }
+  .feedback-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-bottom: 8px; }
+  .feedback h3 { margin: 0; font-size: 16px; }
+  .feedback p { margin: 6px 0; }
+  .action {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: var(--signal-high-bg);
+    border-left: 4px solid var(--signal-high);
+    border-radius: 0 var(--r-sm) var(--r-sm) 0;
+    font-size: 14.5px;
+  }
+  .action strong { color: var(--signal-high); }
+
+  /* 贴切帖子深度分析 */
+  .deep-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+  .post-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .post-card h3 { margin: 0; font-size: 16px; line-height: 1.4; }
+  .post-src { font-size: 12.5px; color: var(--ink-soft); }
+  .rel {
+    font-size: 13px;
+    background: var(--signal-high-bg);
+    color: var(--signal-high);
+    border-radius: var(--r-sm);
+    padding: 4px 10px;
+    display: inline-block;
+    margin-top: 2px;
+  }
+  .post-card h4 { margin: 12px 0 4px; font-size: 13px; color: var(--accent-strong); letter-spacing: .04em; }
+  .quote {
+    margin: 6px 0;
+    padding: 8px 12px;
+    border-left: 3px solid var(--accent);
+    background: var(--surface-soft);
+    border-radius: 0 var(--r-sm) var(--r-sm) 0;
+    font-size: 14px;
+    color: var(--ink);
+  }
+  .post-card ul { margin: 4px 0; padding-left: 18px; }
+  .post-card li { margin: 4px 0; font-size: 14px; }
+  .insight-block {
+    margin-top: 4px;
+    padding: 10px 12px;
+    background: var(--signal-mid-bg);
+    border-radius: var(--r-sm);
+    font-size: 14px;
+  }
+  .insight-block strong { color: var(--signal-mid); }
+  .action-list { font-size: 13.5px; border-top: 1px dashed var(--line); padding-top: 8px; margin-top: 2px; color: var(--ink-soft); }
+
+  /* 决策产出四维度 */
+  .outputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .out-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 16px 18px;
+  }
+  .out-card h3 { margin: 0 0 10px; font-size: 16px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .out-card h3 .no {
+    flex: 0 0 auto;
+    width: 24px; height: 24px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--accent-strong); color: #fff8ec;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .out-card ol { margin: 0; padding-left: 20px; }
+  .out-card li { margin: 8px 0; font-size: 14.5px; }
+  .out-card li strong { display: block; }
+  .out-card li .src { display: block; font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
+  .prio-row { display: flex; align-items: center; gap: 10px; margin: 7px 0; }
+  .prio-row .rk { flex: 0 0 22px; font-family: var(--font-mono); font-weight: 700; color: var(--accent-strong); }
+  .prio-row .nm { flex: 0 0 150px; font-size: 14px; font-weight: 600; }
+  .prio-row .bar { flex: 1 1 auto; }
+  .prio-row .wt { flex: 0 0 44px; font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-soft); text-align: right; }
+
+  /* 参考来源 */
+  .sources { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 8px 20px; }
+  .sources li { font-size: 14px; margin-bottom: 6px; }
+  a { color: var(--accent-strong); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:hover { color: var(--accent); }
+  a:focus-visible, button:focus-visible, summary:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+  .src-name { font-weight: 600; }
+
+  footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-soft);
+    font-size: 13px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    justify-content: space-between;
+  }
+  footer .warn { color: var(--demo); font-weight: 600; }
+
+  @media (max-width: 620px) {
+    .verdict { flex-direction: column; }
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+    .prio-row .nm { flex-basis: 110px; }
+  }
+  @media print {
+    body { background: #fff; }
+    .wrap { max-width: none; padding: 0; }
+    .verdict { background: #3b2a1b; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .kpi, table, .insight, .feedback, .post-card, .out-card { break-inside: avoid; }
+    a { color: inherit; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <span class="brand">Geimori Market Intel</span>
+    <span class="demo-badge">DEMO · 示例数据</span>
+  </div>
+
+  <p class="demo-note">⚠️ 本报告为演示版（Demo）：帖子与 KPI 为<strong>模拟示例数据</strong>；<strong>贴切帖子深度分析与决策产出</strong>基于真实 Reddit 社区口碑素材（见各板块来源链接）。正式上线后将拉取真实 Reddit 帖子并标注原文链接。</p>
+
+  <header class="lead">
+    <h1>Reddit 磨豆机情报 · 每日报告</h1>
+    <p class="sub">覆盖 r/pourover 与 r/espresso ｜ 数据日期 2026-09-26（示例）｜ 聚焦：磨豆机需求、痛点、Geimori 品牌反馈与营销/产品决策产出</p>
+  </header>
+
+  <div class="verdict">
+    <span class="tag">今日信号</span>
+    <p>社区最活跃话题是「<strong>清晰度 vs 甜感</strong>」之争（ZP6 vs K-Ultra），<strong>静电飞粉</strong> 是贯穿手冲与意式的最高频痛点；$300-500 被反复确认为家用意式磨豆机的性价比甜点区。对 Geimori：抗静电叙事必须可验证，「零残留 + 免 RDT」是当前最值得打的两个卖点。</p>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><span class="num">61</span><span class="lbl">当日新帖（r/pourover 34 + r/espresso 27）</span></div>
+    <div class="kpi hl"><span class="num">18 <small>/ 29.5%</small></span><span class="lbl">磨豆机相关帖（占比）</span></div>
+    <div class="kpi"><span class="num">5</span><span class="lbl">进入热门榜的磨豆机帖</span></div>
+    <div class="kpi"><span class="num">1</span><span class="lbl">Geimori 品牌提及</span></div>
+  </div>
+
+  <section id="hot">
+    <h2>热门帖子 <span class="en">Top Posts · 示例</span></h2>
+    <div class="table-scroll">
+      <table>
+        <caption>按热度排序的磨豆机相关帖子（Demo 示例，非真实抓取）</caption>
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">帖子</th>
+            <th scope="col">子版</th>
+            <th scope="col">话题</th>
+            <th scope="col" class="num">赞</th>
+            <th scope="col" class="num">评论</th>
+            <th scope="col">讨论要点</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>ZP6 vs K-Ultra: I can't decide between clarity and sweetness</td>
+            <td><span class="pill">r/pourover</span></td>
+            <td><span class="pill hot">手冲对比</span></td>
+            <td class="num">342</td>
+            <td class="num">87</td>
+            <td>ZP6 清晰度与花香 vs K-Ultra 甜感均衡；多数回复认为取决于豆子与冲煮目标。</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>DF64 Gen 2 static is driving me crazy - RDT or ionizer?</td>
+            <td><span class="pill">r/espresso</span></td>
+            <td><span class="pill hot">静电痛点</span></td>
+            <td class="num">218</td>
+            <td class="num">64</td>
+            <td>静电飞粉是单剂量磨豆机高频抱怨；讨论 RDT、离子发生器与出粉嘴改造的实际效果。</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>K6 at $99 is 95% of my K-Ultra for 1/5 the price</td>
+            <td><span class="pill">r/pourover</span></td>
+            <td><span class="pill">性价比</span></td>
+            <td class="num">189</td>
+            <td class="num">42</td>
+            <td>K6 以不到 $100 提供接近旗舰的研磨一致性，被视为预算首选，也引发「是否需要旗舰」讨论。</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td>Bought DF54, first week dialing in - tips?</td>
+            <td><span class="pill">r/espresso</span></td>
+            <td><span class="pill">入门意式</span></td>
+            <td class="num">156</td>
+            <td class="num">51</td>
+            <td>新手求助帖：出粉一致性、静电控制、流速调整是主要话题。</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td>Is $400 still the sweet spot for home espresso grinders in 2026?</td>
+            <td><span class="pill">r/espresso</span></td>
+            <td><span class="pill">价位段</span></td>
+            <td class="num">134</td>
+            <td class="num">88</td>
+            <td>$300-500 区间（DF64 / Specialita / Niche 级别）被反复提为家用意式甜点区。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="insights">
+    <h2>需求与痛点洞察 <span class="en">Grinder Insights · 示例</span></h2>
+    <div class="insights">
+      <article class="insight">
+        <h3>手冲磨豆机需求 <span class="strength high">信号强 · 6 帖</span></h3>
+        <div class="bar high" aria-hidden="true"><span></span></div>
+        <ul>
+          <li>「清晰度 vs 甜感」是当前手冲区最活跃争论（ZP6 vs K-Ultra）。</li>
+          <li>用户先定义风味目标（花香清晰 / 甜感均衡），再选刀盘与机型。</li>
+          <li>低细粉、高均匀度等细分需求关注度高，愿意为单一场景专用机型付费。</li>
+        </ul>
+        <p class="evidence">证据帖：r/pourover · ZP6 vs K-Ultra；r/pourover · K6 vs K-Ultra</p>
+      </article>
+
+      <article class="insight">
+        <h3>意式磨豆机需求 <span class="strength high">信号强 · 5 帖</span></h3>
+        <div class="bar high" aria-hidden="true"><span></span></div>
+        <ul>
+          <li>$300-500 被普遍认为是家用意式单剂量磨豆机的性价比甜点区。</li>
+          <li>64mm 平刀盘 + 无级微调 + 低残留成为「高价值感」标准配置。</li>
+          <li>可升级刀盘（SSP 等）是重要加分项，用户重视长期可玩性。</li>
+        </ul>
+        <p class="evidence">证据帖：r/espresso · $400 sweet spot；r/espresso · DF54 dial in</p>
+      </article>
+
+      <article class="insight">
+        <h3>便携 / 入门性价比 <span class="strength medium">信号中 · 4 帖</span></h3>
+        <div class="bar medium" aria-hidden="true"><span></span></div>
+        <ul>
+          <li>K6（$99-109）被称为预算意式研磨的「诚实下限」：240 档调节 + 48mm 不锈钢刀盘。</li>
+          <li>「90-95% 旗舰体验、1/5 价格」的叙事推动入门用户直接买性价比机型。</li>
+          <li>升级路径讨论多：预算先入门，再按需求补旗舰或电动磨豆机。</li>
+        </ul>
+        <p class="evidence">证据帖：r/pourover · K6 95% of K-Ultra；r/espresso · best under $200</p>
+      </article>
+
+      <article class="insight">
+        <h3>高频痛点（全品类） <span class="strength high">信号强 · 7 帖</span></h3>
+        <div class="bar high" aria-hidden="true"><span></span></div>
+        <ul>
+          <li><strong>静电飞粉</strong>是最高频抱怨：RDT 喷水、离子发生器、出粉嘴改造是三大解法。</li>
+          <li><strong>细粉 / 残粉清理</strong>第二：用户重视易拆洗、低残留与吹气设计。</li>
+          <li>刀盘升级成本被多次提及，用户期待购机前就了解可升级性。</li>
+        </ul>
+        <p class="evidence">证据帖：r/espresso · DF64 static；r/espresso · retention &amp; cleaning</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="brand">
+    <h2>Geimori 品牌反馈 <span class="en">Brand Mentions · 示例</span></h2>
+    <div class="feedback">
+      <div class="feedback-head">
+        <h3>r/espresso · Anyone tried Geimori T38? The anti-static coating sounds interesting</h3>
+        <span class="pill pos">正面 · 观望</span>
+        <span class="pill demo">Demo 示例</span>
+      </div>
+      <p><strong>热度：</strong>47 赞 / 12 评论 ｜ <strong>情感分：</strong>+0.8（正面）</p>
+      <p><strong>内容摘要：</strong>用户对 Geimori T38 的抗静电卖点感兴趣，但尚处观望阶段——希望看到更多真实用户评测与第三方对比。</p>
+      <p class="action"><strong>建议动作：</strong>在社区投放 T38 抗静电实测内容（如与 DF64 的静电对比），并引导真实用户分享使用体验，把「观望」转化为「口碑」。</p>
+    </div>
+  </section>
+
+  <section id="deep">
+    <h2>贴切帖子 AI 深度分析 <span class="en">Deep Dive · 真实口碑素材</span></h2>
+    <p style="margin-top:-6px;color:var(--ink-soft);font-size:14px;">正式系统将从 r/pourover / r/espresso 拉取真实帖子并按此模板深度分析；以下两篇基于真实 Reddit 社区口碑素材，主题与 Geimori 磨豆机（抗静电 / 单剂量）最贴切。</p>
+    <div class="deep-grid">
+      <article class="post-card">
+        <h3>DF64 Gen 2：静电与残留曾是「阿喀琉斯之踵」，离子发生器如何改变游戏规则</h3>
+        <span class="rel">贴切度：最高 · 直接对标 T38 抗静电卖点</span>
+        <p class="post-src">来源：<a href="https://redditpicked.com/best-espresso-grinder-reddit/" target="_blank" rel="noopener noreferrer">Reddit Picked · 5 Best Espresso Grinders</a>（r/espresso 口碑）</p>
+        <h4>关键用户声音</h4>
+        <p class="quote">“I hate doing RDT, so this was huge for me”——用户最想要的是免 RDT 的零操作方案</p>
+        <p class="quote">“I regularly put in 18 g and get 18 g out”——近零残留是社区验收标准</p>
+        <p class="quote">“Static and retention used to be the DF64's Achilles' heel”——静电是品类级痛点</p>
+        <h4>痛点清单</h4>
+        <ul>
+          <li>静电飞粉（Gen 1 遗留问题，离子发生器后才解决）</li>
+          <li>declumper / 离子器区域清洁麻烦</li>
+          <li>噪音大（wake-up-the-baby loud）</li>
+          <li>极干气候下离子发生器仍可能需要 RDT</li>
+        </ul>
+        <div class="insight-block"><strong>AI 判断：</strong>静电控制已从「加分项」变成「及格线」——没有抗静电方案的磨豆机会被直接劝退；而「免 RDT」是社区最渴求的传播点。</div>
+        <p class="action-list"><strong>可落地：</strong>① T38 vs DF64 静电实测对比内容；② 宣传口径直接引用「18g in / 18g out」；③ 规格表公开噪音 dB 与残留克数。</p>
+      </article>
+
+      <article class="post-card">
+        <h3>Eureka Mignon Specialita：$400-500 口碑王，但 retention 1-3g 卡粉 + RDT 是标配</h3>
+        <span class="rel">高相关 · retention 硬指标 + 静电日常处理</span>
+        <p class="post-src">来源：<a href="https://coffeegrinderguide.com/eureka-mignon-specialita-reddit/" target="_blank" rel="noopener noreferrer">Coffee Grinder Guide · Eureka Specialita Reddit</a>（r/espresso 口碑）</p>
+        <h4>关键用户声音</h4>
+        <p class="quote">“RDT every time: a single spray of water before grinding eliminates static almost completely”——RDT 已成用户日常标配</p>
+        <p class="quote">“People report 1-3 grams of ground coffee getting stuck in the chute”——retention 是最频繁抱怨</p>
+        <p class="quote">用户为减残留自行加硅胶风箱、拍打机身、换单剂量料斗——“买后改造”文化盛行</p>
+        <h4>痛点清单</h4>
+        <ul>
+          <li>retention 1-3g（单剂量输入 ≠ 输出）</li>
+          <li>干气候静电</li>
+          <li>切换冲煮方式不灵活</li>
+        </ul>
+        <div class="insight-block"><strong>AI 判断：</strong>retention 是单剂量用户的第一硬指标；用户愿意 DIY 改造说明「原生解决」存在巨大需求缺口。</div>
+        <p class="action-list"><strong>可落地：</strong>① 把「18g in 18g out」做成规格承诺；② 提供防静电 + 低残留的原生方案，减少用户 DIY；③ 内容对比「需 RDT 的竞品 vs 免操作的我们」。</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="outputs">
+    <h2>决策产出 <span class="en">Actionable Outputs · 示例</span></h2>
+    <div class="outputs">
+      <article class="out-card">
+        <h3><span class="no">4</span>顾客最关心什么</h3>
+        <div class="prio-row"><span class="rk">1</span><span class="nm">静电飞粉控制</span><div class="bar high" aria-hidden="true"><span></span></div><span class="wt">32%</span></div>
+        <div class="prio-row"><span class="rk">2</span><span class="nm">残粉 / 低残留</span><div class="bar high" aria-hidden="true"><span></span></div><span class="wt">24%</span></div>
+        <div class="prio-row"><span class="rk">3</span><span class="nm">研磨一致性 / 细粉</span><div class="bar high" aria-hidden="true"><span></span></div><span class="wt">18%</span></div>
+        <div class="prio-row"><span class="rk">4</span><span class="nm">性价比与价位段</span><div class="bar medium" aria-hidden="true"><span></span></div><span class="wt">12%</span></div>
+        <div class="prio-row"><span class="rk">5</span><span class="nm">刀盘可升级性</span><div class="bar medium" aria-hidden="true"><span></span></div><span class="wt">8%</span></div>
+        <div class="prio-row"><span class="rk">6</span><span class="nm">噪音与易清洁</span><div class="bar medium" aria-hidden="true"><span></span></div><span class="wt">6%</span></div>
+        <p style="font-size:13px;color:var(--ink-soft);margin:10px 0 0;">注：权重为基于素材的示例估算，正式系统按帖量与互动计算。</p>
+      </article>
+
+      <article class="out-card">
+        <h3><span class="no">1</span>可用在广告语上</h3>
+        <ol>
+          <li><strong>告别喷水，出粉干净利落</strong><span class="src">源自社区最高频操作 RDT 的反向叙事 · 主视觉卖点</span></li>
+          <li><strong>18g in, 18g out——每一克都在杯里</strong><span class="src">社区零残留检验标准 · 产品页核心参数</span></li>
+          <li><strong>静电？那是别人的阿喀琉斯之踵</strong><span class="src">对标 DF64 原话 · campaign 文案</span></li>
+          <li><strong>$400 的机身，$700 的体验</strong><span class="src">社区性价比评价模板 · 广告主标语</span></li>
+          <li><strong>为手冲而生的清晰度，为意式而生的甜感</strong><span class="src">承接 ZP6 vs K-Ultra 争论 · 双场景营销</span></li>
+          <li><strong>WDT 不再是日常</strong><span class="src">对标 clumpy 需 WDT 的吐槽 · 痛点共鸣</span></li>
+        </ol>
+      </article>
+
+      <article class="out-card">
+        <h3><span class="no">2</span>爆点可用在 Blog 上</h3>
+        <ol>
+          <li><strong>为什么咖啡粉会到处飞？静电物理课 + RDT / 离子 / 涂层终极对比</strong><span class="src">科普 + 对比 · 天然搜索流量</span></li>
+          <li><strong>18g in, 18g out：单剂量磨豆机的零残留标准是怎么来的</strong><span class="src">教育用户建立硬指标心智</span></li>
+          <li><strong>$99 vs $400：入门与旗舰磨豆机的差距到底在哪</strong><span class="src">价格段对比 · 覆盖决策路径</span></li>
+          <li><strong>2026 家用意式磨豆机甜点区实测：DF64 / Specialita / T38 横评</strong><span class="src">第三方横评 · 贴近社区热点</span></li>
+          <li><strong>细粉与甜感：K-Ultra vs ZP6 的原理拆解，手冲党怎么选</strong><span class="src">承接最热话题 · 深度内容</span></li>
+          <li><strong>Reddit 上磨豆机被吐槽最多的 5 个点（以及我们怎么解决）</strong><span class="src">痛点共鸣 · 天然传播性</span></li>
+        </ol>
+      </article>
+
+      <article class="out-card">
+        <h3><span class="no">3</span>产品改进建议</h3>
+        <ol>
+          <li><strong>抗静电卖点必须可验证</strong><span class="src">提供 vs 无处理 / RDT / 离子发生器的实测数据与对比视频（社区反感 marketing copy）</span></li>
+          <li><strong>明确标注残留克数</strong><span class="src">目标 &lt;0.1g，用「18g in / 18g out」作为宣传口径</span></li>
+          <li><strong>噪音控制</strong><span class="src">DF64 / Encore 都被吐槽 loud；&lt;70dB 规格是差异化机会</span></li>
+          <li><strong>强调 64mm 刀盘平台 + SSP 兼容</strong><span class="src">可升级性是社区硬需求</span></li>
+          <li><strong>易清洁设计</strong><span class="src">declumper / 离子器区域可拆洗（DF64 吐槽点）</span></li>
+          <li><strong>干气候一致性</strong><span class="src">涂层方案若低湿度仍稳定，直接打「全湿度环境免 RDT」</span></li>
+          <li><strong>内容策略：真实口碑优先</strong><span class="src">投放真实用户评测 + 第三方对比，把观望转化为口碑</span></li>
+        </ol>
+      </article>
+    </div>
+  </section>
+
+  <section id="sources">
+    <h2>参考来源 <span class="en">Reference · 真实链接</span></h2>
+    <p style="margin-top:-4px;color:var(--ink-soft);font-size:14px;">以下为正式系统素材来源形态的示例（真实网页）：社区话题常围绕这些官方评测、产品页与口碑聚合页展开。</p>
+    <ul class="sources">
+      <li><span class="src-name"><a href="https://redditpicked.com/best-espresso-grinder-reddit/" target="_blank" rel="noopener noreferrer">Reddit Picked</a></span> · 2026 意式磨豆机口碑榜（DF64 Gen 2 深度）</li>
+      <li><span class="src-name"><a href="https://coffeegrinderguide.com/eureka-mignon-specialita-reddit/" target="_blank" rel="noopener noreferrer">Coffee Grinder Guide</a></span> · Eureka Specialita Reddit 口碑（retention / RDT）</li>
+      <li><span class="src-name"><a href="https://1zpresso.coffee/zp6-kultra-charity/" target="_blank" rel="noopener noreferrer">1Zpresso 官方</a></span> · ZP6 vs K-Ultra 评测：清晰度 vs 甜感</li>
+      <li><span class="src-name"><a href="https://1zpresso.coffee/jp/kultra-review-wbrc-champion-sherry/" target="_blank" rel="noopener noreferrer">1Zpresso 官方</a></span> · K-Ultra 评测：细粉与甜感的关系（WBrC 冠军 Sherry）</li>
+      <li><span class="src-name"><a href="https://coffeechronicler.com/gear/grinders/manual/best-manual-coffee-grinder/" target="_blank" rel="noopener noreferrer">Coffee Chronicler</a></span> · 最佳手摇磨豆机：ZP6 Special 深度评测</li>
+      <li><span class="src-name"><a href="https://df64coffee.com/products/df64-gen-2-single-dose-coffee-grinder" target="_blank" rel="noopener noreferrer">DF64 Coffee</a></span> · DF64 Gen 2 官方页：等离子发生器抗静电</li>
+      <li><span class="src-name"><a href="https://www.kafava.com/en-sg/products/df64-gen-2-single-dose-coffee-grinder" target="_blank" rel="noopener noreferrer">Kafava</a></span> · DF64 Gen 2：Red Titanium 刀盘、近零残留</li>
+      <li><span class="src-name"><a href="https://coffeegrinderguide.com/best-budget-hand-grinder/" target="_blank" rel="noopener noreferrer">Coffee Grinder Guide</a></span> · 最佳预算手摇磨：KINGrinder K6（$99）</li>
+      <li><span class="src-name"><a href="https://timtalkscoffee.com/best-manual-coffee-grinder/" target="_blank" rel="noopener noreferrer">Tim Talks Coffee</a></span> · 手摇磨豆机购买指南：K6 240 档调节 / K-Ultra 全能</li>
+      <li><span class="src-name"><a href="https://baristalife.co/blogs/blog/best-espresso-grinder-under-200" target="_blank" rel="noopener noreferrer">Barista Life</a></span> · 2026 年 $200 内最佳意式磨豆机：K6 $109</li>
+      <li><span class="src-name"><a href="https://stillwatercoffee.ca/blogs/brew_hacks/comandante-c40-vs-1zpresso-k-ultra-vs-zp6" target="_blank" rel="noopener noreferrer">Stillwater Coffee</a></span> · C40 vs K-Ultra vs ZP6 对比</li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>Reddit 磨豆机情报 · 每日报告 — Geimori Market Intel</span>
+    <span class="warn">DEMO 数据仅作演示，不代表真实监测结果</span>
+  </footer>
+
+</div>
+</body>
+</html>

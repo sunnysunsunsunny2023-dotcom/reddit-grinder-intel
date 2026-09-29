@@ -1,0 +1,331 @@
+{
+  "report_date": "2026-09-26",
+  "demo": true,
+  "demo_note": "本文件为演示用模拟数据，用于展示正式系统的每日分析输出结构。字段结构与正式运行一致，帖子数据为示例；贴切帖子深度分析基于真实 Reddit 社区口碑素材。",
+  "generated_at": "2026-09-27T16:30:00+08:00",
+  "stats": {
+    "r_pourover_new": 34,
+    "r_espresso_new": 27,
+    "total_new": 61,
+    "grinder_related": 18,
+    "grinder_ratio": 0.295,
+    "geimori_mentions": 1,
+    "hot_posts": 5
+  },
+  "hot_posts": [
+    {
+      "rank": 1,
+      "subreddit": "r/pourover",
+      "title": "ZP6 vs K-Ultra: I can't decide between clarity and sweetness",
+      "ups": 342,
+      "comments": 87,
+      "topic": "手冲磨豆机对比",
+      "summary": "社区核心争论：ZP6 强调清晰度与花香，K-Ultra 甜感与复杂度更均衡；多数回复认为取决于豆子和冲煮目标。"
+    },
+    {
+      "rank": 2,
+      "subreddit": "r/espresso",
+      "title": "DF64 Gen 2 static is driving me crazy - RDT or ionizer?",
+      "ups": 218,
+      "comments": 64,
+      "topic": "静电痛点",
+      "summary": "静电飞粉是意式单剂量磨豆机最高频痛点；讨论集中在 RDT 喷水法、离子发生器与更换出粉嘴的实际效果。"
+    },
+    {
+      "rank": 3,
+      "subreddit": "r/pourover",
+      "title": "K6 at $99 is 95% of my K-Ultra for 1/5 the price",
+      "ups": 189,
+      "comments": 42,
+      "topic": "便携/性价比",
+      "summary": "K6 以不到 $100 的价格提供接近旗舰的研磨一致性，被多次称为预算首选，也引发'是否需要旗舰'的讨论。"
+    },
+    {
+      "rank": 4,
+      "subreddit": "r/espresso",
+      "title": "Bought DF54, first week dialing in - tips?",
+      "ups": 156,
+      "comments": 51,
+      "topic": "入门意式",
+      "summary": "新手入门意式磨豆机的典型求助帖：出粉一致性、静电控制、无底手柄流速调整是主要话题。"
+    },
+    {
+      "rank": 5,
+      "subreddit": "r/espresso",
+      "title": "Is $400 still the sweet spot for home espresso grinders in 2026?",
+      "ups": 134,
+      "comments": 88,
+      "topic": "价位段讨论",
+      "summary": "$300-500 区间（DF64 / Specialita / Niche 等）被反复提及为家用意式磨豆机的性价比甜点区。"
+    }
+  ],
+  "grinder_insights": [
+    {
+      "id": "G1",
+      "category": "手冲磨豆机需求",
+      "signal_strength": "high",
+      "mentions": 6,
+      "points": [
+        "清晰度 vs 甜感的取向之争是当前手冲区最活跃话题（ZP6 vs K-Ultra）。",
+        "用户选磨豆机时先定义风味目标（花香清晰 vs 甜感均衡），再选刀盘/机型。",
+        "对细分需求（低细粉、高均匀度）的关注度高，愿意为单一场景专用机型付费。"
+      ],
+      "evidence_posts": ["r/pourover - ZP6 vs K-Ultra", "r/pourover - K6 vs K-Ultra"]
+    },
+    {
+      "id": "G2",
+      "category": "意式磨豆机需求",
+      "signal_strength": "high",
+      "mentions": 5,
+      "points": [
+        "$300-500 被普遍认为是家用意式单剂量磨豆机的性价比甜点区（DF64 $399 / Specialita / Niche 级别）。",
+        "64mm 平刀盘 + 无级微调 + 低残留成为'高价值感'的标准配置。",
+        "可升级刀盘（SSP 等）是重要加分项，用户重视长期可玩性。"
+      ],
+      "evidence_posts": ["r/espresso - $400 sweet spot", "r/espresso - DF54 dial in"]
+    },
+    {
+      "id": "G3",
+      "category": "便携/入门性价比",
+      "signal_strength": "medium",
+      "mentions": 4,
+      "points": [
+        "K6（$99-109）被称为预算意式研磨的'诚实下限'，240 档调节 + 48mm 不锈钢刀盘。",
+        "'90-95% 的旗舰体验、1/5 的价格'叙事推动入门用户直接选购性价比机型。",
+        "升级路径讨论多：预算先入门，再按需求补旗舰或电动磨豆机。"
+      ],
+      "evidence_posts": ["r/pourover - K6 95% of K-Ultra", "r/espresso - best under $200"]
+    },
+    {
+      "id": "G4",
+      "category": "高频痛点（全品类）",
+      "signal_strength": "high",
+      "mentions": 7,
+      "points": [
+        "静电飞粉是最高频抱怨：RDT 喷水、离子发生器、出粉嘴改造是三大主流解法。",
+        "细粉/残粉清理排第二：用户重视易拆洗、低残留、吹气设计。",
+        "刀盘升级成本被多次提及：SSP 刀盘价格不透明，用户期待'买机器前就了解可升级性'。"
+      ],
+      "evidence_posts": ["r/espresso - DF64 static", "r/espresso - retention & cleaning"]
+    }
+  ],
+  "brand_feedback": [
+    {
+      "platform": "r/espresso",
+      "thread_title": "Anyone tried Geimori T38? The anti-static coating sounds interesting",
+      "ups": 47,
+      "comments": 12,
+      "sentiment": "positive",
+      "sentiment_score": 0.8,
+      "summary": "用户对 Geimori T38 的抗静电卖点感兴趣，但尚处观望阶段：希望看到更多真实用户评测和第三方对比。",
+      "action": "建议：在社区提供 T38 抗静电实测内容（如 vs DF64 静电对比），并引导用户分享真实使用体验。"
+    }
+  ],
+  "customer_priorities": [
+    {
+      "rank": 1,
+      "priority": "静电飞粉控制",
+      "weight": 0.32,
+      "detail": "最高频抱怨。用户不想每天 RDT 喷水，期待'零额外操作'的解法（离子发生器/涂层）。",
+      "signal": "high"
+    },
+    {
+      "rank": 2,
+      "priority": "残粉 / 低残留（retention）",
+      "weight": 0.24,
+      "detail": "单剂量硬指标：'18g in, 18g out' 是社区检验标准；retention 1-3g 会被视为不合格。",
+      "signal": "high"
+    },
+    {
+      "rank": 3,
+      "priority": "研磨一致性与细粉控制",
+      "weight": 0.18,
+      "detail": "均匀度直接决定风味与萃取；clumping 需 WDT 会被吐槽。",
+      "signal": "high"
+    },
+    {
+      "rank": 4,
+      "priority": "性价比与价位段",
+      "weight": 0.12,
+      "detail": "$300-500 是意式甜点区，$99-139 是入门区；用户对'值不值'极度敏感。",
+      "signal": "medium"
+    },
+    {
+      "rank": 5,
+      "priority": "刀盘可升级性",
+      "weight": 0.08,
+      "detail": "SSP 兼容与 64mm 平台是长期可玩性的标志，影响高端用户决策。",
+      "signal": "medium"
+    },
+    {
+      "rank": 6,
+      "priority": "噪音与易清洁",
+      "weight": 0.06,
+      "detail": "'早晨不吵醒家人'被多次提及；declumper 区域清洁困难是常见吐槽。",
+      "signal": "medium"
+    }
+  ],
+  "marketing_angles": [
+    {
+      "id": "AD1",
+      "hook": "告别喷水，出粉干净利落",
+      "basis": "社区最高频操作 RDT 的反向叙事：用户不想每天给豆子喷水。对标 DF64 离子发生器'no RDT needed'口碑。",
+      "usage": "主视觉卖点 / 首屏标语"
+    },
+    {
+      "id": "AD2",
+      "hook": "18g in, 18g out——每一克都在杯里",
+      "basis": "社区检验零残留的标准话术，直接回应单剂量用户最关心的 retention。",
+      "usage": "产品页核心参数 / 对比评测标题"
+    },
+    {
+      "id": "AD3",
+      "hook": "静电？那是别人的阿喀琉斯之踵",
+      "basis": "DF64 社区原话 'static used to be the Achilles' heel'，痛点攻击 + 差异化定位。",
+      "usage": "campaign 文案 / 社媒海报"
+    },
+    {
+      "id": "AD4",
+      "hook": "$400 的机身，$700 的体验",
+      "basis": "社区对 DF64 Gen 2 的评价 'a $700 machine trapped in a $400 body'，性价比叙事模板。",
+      "usage": "广告主标语 / 比价内容"
+    },
+    {
+      "id": "AD5",
+      "hook": "为手冲而生的清晰度，为意式而生的甜感",
+      "basis": "ZP6 vs K-Ultra 社区争论（clarity vs sweetness）的风味定位语言。",
+      "usage": "手冲/意式双场景营销"
+    },
+    {
+      "id": "AD6",
+      "hook": "WDT 不再是日常",
+      "basis": "Encore ESP 等机型 clumpy 需 WDT 的社区吐槽，反衬出粉不结块。",
+      "usage": "对比型广告 / 用户痛点共鸣"
+    }
+  ],
+  "blog_topics": [
+    {
+      "id": "B1",
+      "title": "为什么咖啡粉会到处飞？静电的物理课 + RDT / 离子发生器 / 涂层方案终极对比",
+      "angle": "科普 + 方案对比，天然搜索流量，建立专业权威",
+      "target": "手冲 + 意式双人群"
+    },
+    {
+      "id": "B2",
+      "title": "18g in, 18g out：单剂量磨豆机的零残留标准是怎么来的",
+      "angle": "教育用户建立'硬指标'心智，顺带论证产品达标",
+      "target": "意式单剂量用户"
+    },
+    {
+      "id": "B3",
+      "title": "$99 vs $400：入门与旗舰磨豆机的差距到底在哪",
+      "angle": "价格段对比，覆盖从犹豫到升级的完整决策路径",
+      "target": "入门/升级用户"
+    },
+    {
+      "id": "B4",
+      "title": "2026 家用意式磨豆机甜点区实测：DF64 / Specialita / T38 横评",
+      "angle": "第三方横评体感内容，最贴近社区讨论热点",
+      "target": "$300-500 决策人群"
+    },
+    {
+      "id": "B5",
+      "title": "细粉与甜感：K-Ultra vs ZP6 的原理拆解，手冲党怎么选",
+      "angle": "承接社区最热话题，用原理拆解做深度内容",
+      "target": "手冲进阶用户"
+    },
+    {
+      "id": "B6",
+      "title": "Reddit 上磨豆机被吐槽最多的 5 个点（以及我们怎么解决）",
+      "angle": "痛点共鸣 + 产品回应，天然传播性",
+      "target": "全人群"
+    }
+  ],
+  "product_improvements": [
+    {
+      "id": "P1",
+      "priority": "high",
+      "suggestion": "抗静电卖点必须可验证",
+      "detail": "提供 vs 无处理 / RDT / 离子发生器的实测数据与对比视频；社区明确反感 marketing copy。"
+    },
+    {
+      "id": "P2",
+      "priority": "high",
+      "suggestion": "明确标注残留克数",
+      "detail": "目标 <0.1g，用 '18g in / 18g out' 作为宣传口径，直接对表社区检验标准。"
+    },
+    {
+      "id": "P3",
+      "priority": "high",
+      "suggestion": "噪音控制",
+      "detail": "DF64/Encore 都被吐槽 'wake-up-the-baby loud'；把噪音做进规格（<70dB）并宣传是差异化机会。"
+    },
+    {
+      "id": "P4",
+      "priority": "medium",
+      "suggestion": "强调 64mm 刀盘平台 + SSP 兼容",
+      "detail": "可升级性是社区硬需求，购机前就说明可玩性。"
+    },
+    {
+      "id": "P5",
+      "priority": "medium",
+      "suggestion": "易清洁设计",
+      "detail": "declumper/离子器区域可拆洗（DF64 的吐槽点），作为卖点写进规格。"
+    },
+    {
+      "id": "P6",
+      "priority": "medium",
+      "suggestion": "干气候一致性",
+      "detail": "若涂层方案在低湿度环境仍稳定，直接打 '全湿度环境免 RDT'（离子发生器在极干环境仍需 RDT）。"
+    },
+    {
+      "id": "P7",
+      "priority": "medium",
+      "suggestion": "内容策略：真实口碑优先",
+      "detail": "投放真实用户评测 + 第三方对比，把 Reddit 上的'观望'转化为'口碑'。"
+    }
+  ],
+  "deep_analysis": [
+    {
+      "id": "D1",
+      "title": "DF64 Gen 2：静电与残留曾是阿喀琉斯之踵，离子发生器如何改变游戏规则",
+      "source": "redditpicked.com（基于 r/espresso 真实口碑）",
+      "source_url": "https://redditpicked.com/best-espresso-grinder-reddit/",
+      "relevance": "最贴切：主题正是'静电痛点 + 抗静电方案'，与 Geimori T38 抗静电卖点直接对标",
+      "key_user_voices": [
+        "'I hate doing RDT, so this was huge for me'——用户最想要的是免 RDT 的零操作方案",
+        "'I regularly put in 18 g and get 18 g out'——近零残留是验收标准",
+        "'Static and retention used to be the DF64's Achilles' heel'——静电是品类级痛点"
+      ],
+      "pain_points": ["静电飞粉（Gen 1 遗留）", "declumper/离子器区域清洁麻烦", "噪音大", "极干气候下离子发生器仍可能需要 RDT"],
+      "ai_insights": [
+        "静电控制已成为意式单剂量磨豆机的'及格线'而非加分项——没有抗静电方案会被直接劝退。",
+        "社区对'免 RDT'极度渴求：任何让用户少一步操作的设计都是传播点。",
+        "噪音被反复吐槽，说明磨豆机正在从'功能工具'走向'家庭电器'，静音是未饱和的差异化位。",
+        "对 Geimori 启示：T38 的抗静电叙事必须可验证（数据+对比），并补足'干气候一致性'和'易清洁'两个盲区。"
+      ],
+      "actionable": ["产出 T38 vs DF64 静电实测对比内容", "宣传口径直接引用 '18g in / 18g out' 检验标准", "规格表公开噪音 dB 与残留克数"]
+    },
+    {
+      "id": "D2",
+      "title": "Eureka Mignon Specialita：$400-500 口碑王，但 retention 1-3g 卡粉 + RDT 是标配",
+      "source": "coffeegrinderguide.com（r/espresso 用户口碑转述）",
+      "source_url": "https://coffeegrinderguide.com/eureka-mignon-specialita-reddit/",
+      "relevance": "高相关：单剂量用户的 retention 硬指标 + 静电日常处理，直接关系 Geimori 产品参数与文案",
+      "key_user_voices": [
+        "'RDT every time: a single spray of water on the beans before grinding eliminates static almost completely'——RDT 已成用户日常标配",
+        "'People report 1-3 grams of ground coffee getting stuck in the chute'——retention 是最频繁抱怨",
+        "用户为减残留自行加硅胶风箱、拍打机身、换单剂量料斗——'买后改造'文化盛行"
+      ],
+      "pain_points": ["retention 1-3g（单剂量输出不准）", "干气候静电", "切换冲煮方式不灵活"],
+      "ai_insights": [
+        "retention 是单剂量用户的第一硬指标：输入≠输出会被视为缺陷，哪怕机器口碑很好。",
+        "用户愿意自己动手改造（风箱、拍打、WDT），说明'原生解决'的方案有巨大需求缺口。",
+        "对 Geimori 启示：把'零残留'做进原生设计而非让用户 DIY，就是最直接的差异化。"
+      ],
+      "actionable": ["把 '18g in 18g out' 做成规格承诺", "提供防静电与低残留的原生方案，减少用户 DIY", "在内容中对比'需 RDT 的竞品 vs 免操作的我们'"]
+    }
+  ],
+  "raw_data_ref": "raw_posts_2026-09-26.jsonl",
+  "analysis_ref": "llm_analysis_2026-09-26.md"
+}
