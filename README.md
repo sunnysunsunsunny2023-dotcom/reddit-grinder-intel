@@ -178,17 +178,17 @@ top_comments     # Top3 评论（可选）
 - 计算在阿里云，LLM 只分析不计算（ADR-001：LLM 也由阿里云调用 DeepSeek），本地只渲染 HTML
 - 测试/修复一律 dry-run，不得真实推送飞书
 
-## 11. 部署 GitHub Secrets（CI/CD 需要）
+## 11. 部署 GitHub Secrets（CI/CD 需要，命名与现有仓库一致）
 
 | Secret | 说明 |
 |--------|------|
-| `ALIYUN_HOST` / `ALIYUN_USER` / `ALIYUN_SSH_KEY` / `ALIYUN_PORT` | 阿里云 SSH（同现有服务） |
+| `SERVER_IP` / `SERVER_USER` / `SSH_PRIVATE_KEY` / `DEPLOY_PAT` | 阿里云 SSH + 部署 PAT（同 Wirsh/youtube-kol 仓库） |
 | `REDDIT_DATABASE_URL` | PostgreSQL 连接串，如 `postgresql://reddit_intel:xxx@127.0.0.1:5432/reddit_intel` |
 | `REDDIT_API_KEY` | 8086 API 鉴权（`X-API-Key`，同 8080/8081 模式） |
 | `ANALYZER_API_KEY` | DeepSeek API Key（ADR-001，阿里云侧调用） |
-| `ANALYZER_API_BASE` / `ANALYZER_MODEL` | 默认 `https://api.deepseek.com` / `deepseek-chat` |
+| `ANALYZER_API_BASE` / `ANALYZER_MODEL` | 默认 `https://api.deepseek.com` / `deepseek-v4-pro` |
 | `REDDIT_USER_AGENT` | Reddit 自定义 UA（防 429） |
 | `REDDIT_SLEEP_SECONDS` | 请求间隔，默认 `2.0` |
 
-**重要**：以上 Secrets 一旦在 GitHub 配置，CI 自动部署到阿里云；`.env` 只在服务器本地生成，绝不入库。
+**重要**：以上 Secrets 一旦在 GitHub 配置，CI 自动部署到阿里云；`.env` 只在服务器本地生成，绝不入库。`SSH_PRIVATE_KEY` 与 Wirsh 仓库共用（私钥只存 Secrets，本地无备份）。
 

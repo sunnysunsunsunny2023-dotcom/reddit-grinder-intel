@@ -4,11 +4,11 @@ After=network.target postgresql.service
 
 [Service]
 Type=simple
-User=__RUN_USER__
-Group=__RUN_USER__
-WorkingDirectory=__APP_DIR__/src
-EnvironmentFile=__APP_DIR__/src/.env
-ExecStart=__APP_DIR__/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port __PORT__
+User=reddit-intel
+Group=reddit-intel
+WorkingDirectory=/opt/reddit-intel
+EnvironmentFile=/opt/reddit-intel/.env
+ExecStart=/opt/reddit-intel/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8086
 Restart=always
 RestartSec=5
 # 安全加固

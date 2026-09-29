@@ -1,6 +1,11 @@
 name: Deploy Reddit Intel
 
+concurrency:
+  group: deploy-reddit-intel
+  cancel-in-progress: true
+
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -17,21 +22,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy via SSH to Aliyun
+      - name: Deploy Reddit Intel via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.ALIYUN_HOST }}
-          username: ${{ secrets.ALIYUN_USER }}
-          key: ${{ secrets.ALIYUN_SSH_KEY }}
-          port: ${{ secrets.ALIYUN_PORT }}
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            set -euo pipefail
-            APP_DIR=/opt/reddit-intel
-            SRC_DIR=$APP_DIR/src
-            mkdir -p $APP_DIR
-            rm -rf $SRC_DIR
-            git clone --depth 1 https://github.com/sunnysunsunsunny2023-dotcom/reddit-grinder-intel.git $SRC_DIR
-            cat > $SRC_DIR/.env <<'EOF'
+            set -e
+            cd /tmp
+            rm -rf reddit-intel-deploy
+            git clone --depth 1 https://${{ secrets.DEPLOY_PAT }}@github.com/${{ github.repository }}.git reddit-intel-deploy
+            mkdir -p /opt/reddit-intel
+            cat > /opt/reddit-intel/.env <<'ENVEOF'
             DATABASE_URL=${{ secrets.REDDIT_DATABASE_URL }}
             REDDIT_API_KEY=${{ secrets.REDDIT_API_KEY }}
             ANALYZER_API_BASE=${{ secrets.ANALYZER_API_BASE }}
@@ -39,6 +42,52 @@ jobs:
             ANALYZER_MODEL=${{ secrets.ANALYZER_MODEL }}
             REDDIT_USER_AGENT=${{ secrets.REDDIT_USER_AGENT }}
             REDDIT_SLEEP_SECONDS=${{ secrets.REDDIT_SLEEP_SECONDS }}
-            EOF
-            chmod 600 $SRC_DIR/.env
-            bash $SRC_DIR/deploy/setup.sh
+            ENVEOF
+            chmod 600 /opt/reddit-intel/.env
+            echo "env written: $(wc -c < /opt/reddit-intel/.env) bytes"
+            bash /tmp/reddit-intel-deploy/deploy/setup.sh /tmp/reddit-intel-deploy
+            rm -rf /tmp/reddit-intel-deploy
+
+      - name: Health check (push 部署轻量验证)
+        if: github.event_name == 'push'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            sleep 3
+            echo "==> API 健康检查"
+            curl -sf --max-time 15 http://127.0.0.1:8086/health || { echo "health FAILED"; exit 1; }
+            systemctl is-active reddit-intel-api
+            echo "==> collector timer 状态"
+            systemctl list-timers reddit-intel-collector.timer --no-pager || true
+            echo "==> PostgreSQL 状态"
+            systemctl is-active postgresql
+
+      - name: Full verification on Aliyun (仅手动触发)
+        if: github.event_name == 'workflow_dispatch'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 20m
+          script: |
+            set -e
+            echo "==> 完整验证（手动触发）：collector 抓取 + 入库 + API + DeepSeek 分析"
+            cd /opt/reddit-intel
+            sudo -u reddit-intel ./.venv/bin/python -m collector.scheduler --subreddits pourover espresso --limit 10
+            echo "==> 数据库行数"
+            sudo -u reddit-intel ./.venv/bin/python -c "
+import os, psycopg2
+c = psycopg2.connect(os.environ['DATABASE_URL'])
+with c.cursor() as cur:
+    for t in ['reddit_posts','reddit_comments','fetch_runs','analysis_batches','analysis_results']:
+        cur.execute(f'SELECT count(*) FROM {t}')
+        print(t, cur.fetchone()[0])
+"
+            echo "==> API analysis-batch（不跑 LLM 则确定性统计可返回；ANALYZER 配置后返回完整）"
+            curl -sf --max-time 60 -H "X-API-Key: $REDDIT_API_KEY" \
+              "http://127.0.0.1:8086/api/reddit/analysis-batch?report_type=daily&hours=24" | head -c 600 || echo "(analysis-batch 需 ANALYZER_API_KEY 或帖子数据)"

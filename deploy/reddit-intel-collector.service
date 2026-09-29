@@ -4,9 +4,9 @@ After=network.target postgresql.service
 
 [Service]
 Type=oneshot
-User=__RUN_USER__
-Group=__RUN_USER__
-WorkingDirectory=__APP_DIR__/src
-EnvironmentFile=__APP_DIR__/src/.env
-ExecStart=__APP_DIR__/venv/bin/python -m collector.scheduler --subreddits pourover espresso --limit 100
+User=reddit-intel
+Group=reddit-intel
+WorkingDirectory=/opt/reddit-intel
+EnvironmentFile=/opt/reddit-intel/.env
+ExecStart=/opt/reddit-intel/.venv/bin/python -m collector.scheduler --subreddits pourover espresso --limit 100
 # 拉取失败不影响下次运行
