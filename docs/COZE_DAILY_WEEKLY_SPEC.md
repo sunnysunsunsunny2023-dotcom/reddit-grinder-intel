@@ -2,7 +2,10 @@
 
 > 目的：把 Reddit Grinder Intelligence 从“每日摘要”升级为“可追溯、可比较、可执行”的情报系统。
 >
-> 技术原则：**阿里云负责抓取、存储、去重、统计、趋势计算与状态；Coze 只负责 LLM 语义分析、报告生成和飞书推送。**
+> 技术原则：**阿里云负责抓取、存储、去重、统计、趋势计算、状态与 LLM 分析（DeepSeek 由阿里云调用）；Coze 只负责报告渲染（HTML）和飞书推送。**
+
+> **ADR-001（2026-09-29）：LLM 分析由阿里云调用 DeepSeek。**
+> 原 spec 中 Coze 负责的 LLM 语义分析全部移至阿里云侧（与 youtube-kol-monitor 同模式，`ANALYZER_*` 配置走 GitHub Secrets，不在代码库落明文）；Coze 只保留 HTML 渲染与飞书推送。所有“LLM 输出纪律”（第 9 节）对阿里云侧的 DeepSeek 分析模块同样适用。
 
 ## 1. 系统边界
 
@@ -16,23 +19,18 @@
 - analysis batch 状态
 - 24h / 7d / 30d 时间窗口聚合
 - mentions / engagement / trend 等确定性计算
-- 对 Coze 提供稳定内部 API
+- **LLM 分析（DeepSeek，阿里云侧调用）**：磨豆机需求分类、Geimori 品牌反馈、竞品洞察、Marketing angles、Blog topics、Product insights
+- 对 Coze 提供稳定内部 API（含 analysis JSON 产出）
 
 ### Coze 负责
 
-- 获取阿里云已整理好的分析批次
-- LLM 语义分类与解释
-- Geimori 品牌反馈分析
-- 需求洞察
-- 竞品洞察
-- Marketing angles
-- Blog topics
-- Product insights
-- Daily HTML / Weekly HTML
+- 获取阿里云已整理好的分析批次与分析结果
+- Daily HTML / Weekly HTML 渲染
 - 飞书卡片推送
 
 ### 明确禁止
 
+- 不让 Coze 调用 LLM 做语义分析（LLM 统一由阿里云调用 DeepSeek）
 - 不让 Coze 自己维护“哪些帖子分析过”
 - 不让 Coze 自己做 mentions、比例、环比、趋势等数学计算
 - 不用本地 JSON state 文件作为生产主状态

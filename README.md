@@ -26,18 +26,22 @@
                                                                  │ HTTP
                                                                  ▼
                                                  ┌──────────────────────────────────┐
+                                                 │  阿里云 8086：LLM 分析（DeepSeek） │
+                                                 │  - 磨豆机需求分类/痛点/趋势       │
+                                                 │  - Geimori 提及检测 + 情感        │
+                                                 │  - 四维度可执行洞察               │
+                                                 └───────────────┬──────────────────┘
+                                                                 │ analysis JSON
+                                                                 ▼
+                                                 ┌──────────────────────────────────┐
                                                  │  Coze 每日调度（CodeAct 脚本）     │
-                                                 │  1. 取 24h 新帖（标题+正文+Top评论）│
-                                                 │  2. LLM（DeepSeek）分析             │
-                                                 │     - 磨豆机需求分类/痛点/趋势      │
-                                                 │     - Geimori 提及检测 + 情感       │
-                                                 │     - 四维度可执行洞察              │
-                                                 │  3. 生成 HTML 报告                  │
-                                                 │  4. file_to_url 短链 → 推飞书      │
+                                                 │  1. 取 analysis JSON（analysis-batch│
+                                                 │  2. 生成 HTML 报告                 │
+                                                 │  3. file_to_url 短链 → 推飞书      │
                                                  └──────────────────────────────────┘
 ```
 
-**关键前提（已实测验证）**：Coze 沙箱访问不了 Reddit（连接被重置），拉取必须在**阿里云服务器**完成；分析放 Coze 侧（LLM 只分析不计算，遵循计算架构铁律）。
+**关键前提（已实测验证）**：Coze 沙箱访问不了 Reddit（连接被重置），拉取必须在**阿里云服务器**完成；LLM 分析统一由**阿里云调用 DeepSeek**（ANALYZER_* 配置走 Secrets，同 youtube-kol 模式），Coze 只渲染 HTML + 推送（遵循计算架构铁律）。
 
 ## 3. 组件设计
 
@@ -50,13 +54,13 @@
 - 鉴权：`X-API-Key`（同现有 8080/8081 模式）
 - **独立端口 8086**，不影响现有 8080/8081/8082/8083 服务
 
-### 3.2 Coze 每日分析（CodeAct 脚本）
+### 3.2 分析（阿里云 DeepSeek）与 Coze 交付
 
-- 每天定时运行：
-  1. 调 8086 拿 24h 新帖
-  2. LLM 分析（标题 + 正文 + Top3 评论，控制成本）
-  3. 生成结构化 JSON + HTML 报告 + 状态文件
-  4. `file_to_url` 生成 coze.cn 短链 → 推飞书卡片（含 `google ad analysis` 关键词）
+- 阿里云侧（8086）：抓取入库后由 LLM 分析模块（DeepSeek，`ANALYZER_*` 配置）生成结构化 analysis JSON（需求/品牌/竞品/洞察），写入 analysis_batches，随 `analysis-batch` API 提供给 Coze
+- Coze 侧（CodeAct 脚本）每天定时运行：
+  1. 调 8086 拿分析批次（analysis JSON，含 evidence/confidence）
+  2. 生成 HTML 报告 + 状态文件
+  3. `file_to_url` 生成 coze.cn 短链 → 推飞书卡片（含 `google ad analysis` 关键词）
 
 ### 3.3 报告与推送
 
