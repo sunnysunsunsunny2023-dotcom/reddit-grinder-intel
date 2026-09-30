@@ -82,21 +82,14 @@ jobs:
           command_timeout: 20m
           script: |
             set -e
-            echo "==> Reddit 403 诊断（UA / endpoint 组合）"
-            for spec in \
-              "grinder|linux:reddit-grinder-intel:v0.1.0 (by /u/reddit_grinder_intel; internal monitoring)" \
-              "chrome|Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36" \
-              "curl|curl/8.5"; do
-              name="${spec%%|*}"; ua="${spec#*|}"
-              echo "--- $name"
-              curl -s -o /dev/null -w "new.json: %{http_code}\n" --max-time 15 -A "$ua" "https://www.reddit.com/r/pourover/new.json?limit=1" || echo "new.json: network-fail"
-              curl -s -o /dev/null -w "rss: %{http_code}\n" --max-time 15 -A "$ua" "https://www.reddit.com/r/pourover/new/.rss?limit=1" || echo "rss: network-fail"
-            done
+            echo "==> Reddit 连通性（已知：JSON 403 → fetcher 自动切 RSS，实测 RSS 200）"
+            curl -s -o /dev/null -w "rss: %{http_code}\n" --max-time 15 -A "linux:reddit-grinder-intel:v0.1.0" "https://www.reddit.com/r/pourover/new/.rss?limit=1" || echo "rss: network-fail"
             echo "==> 完整验证（手动触发）：collector 抓取 + 入库 + API + DeepSeek 分析"
             cd /opt/reddit-intel
             sudo -u reddit-intel ./.venv/bin/python -m collector.scheduler --subreddits pourover espresso --limit 10
             echo "==> 数据库行数"
             sudo -u reddit-intel ./.venv/bin/python deploy/verify_install.py
             echo "==> API analysis-batch（不跑 LLM 则确定性统计可返回；ANALYZER 配置后返回完整）"
+            set -a; source /opt/reddit-intel/.env; set +a
             curl -sf --max-time 60 -H "X-API-Key: $REDDIT_API_KEY" \
               "http://127.0.0.1:8086/api/reddit/analysis-batch?report_type=daily&hours=24" | head -c 600 || echo "(analysis-batch 需 ANALYZER_API_KEY 或帖子数据)"

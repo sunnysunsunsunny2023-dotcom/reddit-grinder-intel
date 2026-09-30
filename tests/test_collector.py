@@ -58,3 +58,67 @@ def test_dedupe_from_known():
     new, existing = df.split([{"post_id": "x"}, {"post_id": "y"}])
     assert new == [{"post_id": "y"}]
     assert existing == [{"post_id": "x"}]
+
+# ---------------- RSS fallback（数据中心 IP 对 JSON 403，ADR-002 部署实测） ----------------
+from collector.reddit_fetcher import RedditFetcher, parse_rss_feed
+
+SAMPLE_RSS = """<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+  <title>r/pourover - new</title>
+  <entry>
+    <author><name>u/geimori_fan</name></author>
+    <category term="Review"/>
+    <content type="html">&lt;!-- SC_OFF --&gt;&lt;div class="md"&gt;&lt;p&gt;Geimori GU63 is amazing for pour over.&lt;/p&gt;&lt;/div&gt;&lt;!-- SC_ON --&gt;</content>
+    <id>t3_rssabc1</id>
+    <link href="https://www.reddit.com/r/pourover/comments/rssabc1/geimori_gu63_review/"/>
+    <published>2026-09-30T08:00:00+00:00</published>
+    <title>Geimori GU63 review</title>
+  </entry>
+  <entry>
+    <content type="html">&lt;!-- SC_OFF --&gt;&lt;p&gt;DF64 vs Niche help&lt;/p&gt;&lt;!-- SC_ON --&gt;</content>
+    <id>t3_rssabc2</id>
+    <link href="https://www.reddit.com/r/espresso/comments/rssabc2/df64_vs_niche/"/>
+    <published>2026-09-30T06:30:00+00:00</published>
+    <title>DF64 vs Niche</title>
+  </entry>
+</feed>
+"""
+
+
+def test_parse_rss_feed():
+    posts = parse_rss_feed(SAMPLE_RSS)
+    assert len(posts) == 2
+    p = posts[0]
+    assert p["id"] == "rssabc1"
+    assert p["title"] == "Geimori GU63 review"
+    assert "Geimori GU63 is amazing" in p["selftext"]
+    assert p["permalink"] == "/r/pourover/comments/rssabc1/geimori_gu63_review"
+    assert p["link_flair_text"] == "Review"
+    assert p["created_utc"] == 1790755200  # 2026-09-30T08:00:00+00:00 epoch
+    assert p["score"] == 0
+
+
+def test_rss_fallback_when_json_403():
+    """JSON 403 时自动 fallback 到 RSS；RSS 也失败时保留原始 403 错误。"""
+
+    class FakeResp:
+        def __init__(self, status, text=""):
+            self.status_code = status
+            self.text = text
+
+    class FakeSession:
+        def __init__(self):
+            self.calls = []
+            self.headers = {}
+
+        def get(self, url, params=None, timeout=None):
+            self.calls.append(url)
+            if url.endswith(".json"):
+                return FakeResp(403)
+            return FakeResp(200, SAMPLE_RSS)
+
+    f = RedditFetcher(session=FakeSession())
+    posts = f.fetch_new_posts("pourover", limit=5)
+    assert len(posts) == 2
+    assert f._session.calls[0].endswith(".json")
+    assert f._session.calls[1].endswith(".rss")

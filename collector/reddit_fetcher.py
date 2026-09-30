@@ -1,7 +1,9 @@
-"""Reddit 公开 JSON API 拉取模块。
+"""Reddit 公开 API 拉取模块。
 
 当前 Reddit Data API 应用未获批，因此 fetcher 保持模块化可替换：
-- 现在：公开 JSON endpoint（https://www.reddit.com/r/{subreddit}/new.json）
+- 现在：先试公开 JSON endpoint（https://www.reddit.com/r/{subreddit}/new.json），
+  服务器数据中心 IP 常被 Reddit 对 JSON 端点 403（实测所有 UA 均 403），
+  自动 fallback 到 RSS 端点（https://www.reddit.com/r/{subreddit}/new/.rss，实测 200）。
 - 未来：官方 Data API / OAuth 获批后，只替换本模块，不影响
   数据库、统计层、LLM 分析或 Coze 报告。
 
@@ -12,7 +14,9 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
+import xml.etree.ElementTree as ET
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -20,10 +24,94 @@ import requests
 logger = logging.getLogger(__name__)
 
 REDDIT_JSON_BASE = "https://www.reddit.com/r/{subreddit}/new.json"
+REDDIT_RSS_BASE = "https://www.reddit.com/r/{subreddit}/new/.rss"
 DEFAULT_USER_AGENT = (
     "linux:reddit-grinder-intel:v0.1.0 (by /u/reddit_grinder_intel; "
     "internal monitoring script)"
 )
+_NS = {"atom": "http://www.w3.org/2005/Atom"}
+_TAG_STRIP_RE = re.compile(r"<[^>]+>")
+_TAG_CLEAN_RE = re.compile(r"<!--.*?-->")
+
+
+def _rss_text_to_plain(html_text: Optional[str]) -> Optional[str]:
+    """把 RSS content 的 HTML 剥成纯文本（去掉 SC_OFF 注释与标签）。"""
+    if not html_text:
+        return None
+    import html as _html
+
+    txt = _TAG_CLEAN_RE.sub("", html_text)
+    txt = _TAG_STRIP_RE.sub("", txt)
+    return _html.unescape(txt).strip() or None
+
+
+def _rss_published_to_epoch(published: Optional[str]) -> Optional[int]:
+    """RSS published ISO 时间 → epoch 秒（parse_post 需要 epoch）。"""
+    if not published:
+        return None
+    try:
+        import datetime as _dt
+
+        return int(_dt.datetime.fromisoformat(published.replace("Z", "+00:00")).timestamp())
+    except (TypeError, ValueError, OSError):
+        return None
+
+
+def parse_rss_feed(xml_text: str) -> List[Dict[str, Any]]:
+    """解析 RSS feed 为与 JSON listing data 兼容的 dict 列表。
+
+    RSS 没有 score / upvote_ratio / num_comments，置 0 占位；
+    后续如需要热门度排序，可再为高价值帖单独补充拉取。
+    """
+    root = ET.fromstring(xml_text)
+    posts: List[Dict[str, Any]] = []
+    for entry in root.findall("atom:entry", _NS):
+        post_id = (entry.findtext("atom:id", default="", namespaces=_NS) or "").strip()
+        if post_id.startswith("t3_"):
+            post_id = post_id[len("t3_"):]
+        link_el = entry.find("atom:link", _NS)
+        href = (link_el.get("href") if link_el is not None else "") or ""
+        permalink = ""
+        if href:
+            m = re.search(r"^https?://(?:www\.)?reddit\.com(/r/[^/]+/comments/[^/]+/[^/]+)", href)
+            permalink = m.group(1) if m else href
+        if not post_id and permalink:
+            m = re.search(r"/comments/([A-Za-z0-9]+)", permalink)
+            if m:
+                post_id = m.group(1)
+        title = (entry.findtext("atom:title", default="", namespaces=_NS) or "").strip()
+        content_el = entry.find("atom:content", _NS)
+        content = content_el.text if content_el is not None else None
+        published = entry.findtext("atom:published", default="", namespaces=_NS) or ""
+        author = ""
+        author_el = entry.find("atom:author/atom:name", _NS)
+        if author_el is not None:
+            author = (author_el.text or "").strip()
+        category = ""
+        cat_el = entry.find("atom:category", _NS)
+        if cat_el is not None:
+            category = (cat_el.get("term") or "").strip()
+        posts.append(
+            {
+                "id": post_id,
+                "title": title,
+                "selftext": _rss_text_to_plain(content),
+                "created_utc": _rss_published_to_epoch(published),
+                "score": 0,
+                "upvote_ratio": None,
+                "num_comments": 0,
+                "permalink": permalink,
+                "link_flair_text": category or None,
+                "raw_json": {
+                    "source": "rss",
+                    "title": title,
+                    "author": author,
+                    "published": published,
+                    "href": href,
+                },
+            }
+        )
+    return posts
 
 
 class RedditFetchError(RuntimeError):
@@ -48,19 +136,41 @@ class RedditFetcher:
     def fetch_new_posts(
         self, subreddit: str, limit: int = 100, after: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """拉取某个 subreddit 的最新帖子原始 JSON。
+        """拉取某个 subreddit 的最新帖子。
+
+        优先 JSON 公开端点；服务器 IP 被 Reddit 对 JSON 403 时
+        自动 fallback 到 RSS 端点（实测 200）。
 
         Args:
             subreddit: subreddit 名（不含 r/ 前缀）。
             limit: 最多拉多少条（Reddit 上限 100）。
-            after: 分页游标（base36 post id）。
+            after: 分页游标（仅 JSON 端点支持；RSS 不支持分页）。
 
         Returns:
-            帖子原始 JSON 列表（listing children 的 data 字段）。
+            帖子原始 dict 列表（与 JSON listing data 兼容）。
 
         Raises:
-            RedditFetchError: 网络或 HTTP 错误。
+            RedditFetchError: 网络或 HTTP 错误（JSON 与 RSS 均失败）。
         """
+        try:
+            return self._fetch_json(subreddit, limit=limit, after=after)
+        except RedditFetchError as json_exc:
+            if "403" not in str(json_exc):
+                raise
+            logger.warning(
+                "Reddit JSON 403 for r/%s (数据中心 IP 常被 JSON 端点拒绝)，fallback RSS: %s",
+                subreddit,
+                json_exc,
+            )
+            try:
+                return self._fetch_rss(subreddit, limit=limit)
+            except RedditFetchError:
+                raise json_exc from None
+
+    def _fetch_json(
+        self, subreddit: str, limit: int = 100, after: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """从公开 JSON 端点拉取（原逻辑）。"""
         url = REDDIT_JSON_BASE.format(subreddit=subreddit)
         params: Dict[str, Any] = {"limit": min(limit, 100)}
         if after:
@@ -88,7 +198,29 @@ class RedditFetcher:
 
         children = payload.get("data", {}).get("children", [])
         posts = [child.get("data", {}) for child in children if child.get("kind") == "t3"]
-        logger.info("Fetched %d posts from r/%s", len(posts), subreddit)
+        logger.info("Fetched %d posts from r/%s (json)", len(posts), subreddit)
+        self._throttle()
+        return posts
+
+    def _fetch_rss(self, subreddit: str, limit: int = 100) -> List[Dict[str, Any]]:
+        """从 RSS 端点拉取并解析为与 JSON 兼容的结构。"""
+        url = REDDIT_RSS_BASE.format(subreddit=subreddit)
+        params: Dict[str, Any] = {"limit": min(limit, 100)}
+        try:
+            resp = self._session.get(url, params=params, timeout=self.timeout)
+        except requests.RequestException as exc:
+            raise RedditFetchError(f"GET {url} failed: {exc}") from exc
+        if resp.status_code != 200:
+            raise RedditFetchError(
+                f"Reddit RSS returned {resp.status_code} for r/{subreddit}"
+            )
+        try:
+            posts = parse_rss_feed(resp.text)
+        except ET.ParseError as exc:
+            raise RedditFetchError(
+                f"Invalid RSS XML from Reddit for r/{subreddit}: {exc}"
+            ) from exc
+        logger.info("Fetched %d posts from r/%s (rss)", len(posts), subreddit)
         self._throttle()
         return posts
 
