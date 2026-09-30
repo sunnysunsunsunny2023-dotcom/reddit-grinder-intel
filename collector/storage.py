@@ -123,40 +123,84 @@ def finish_fetch_run(
     conn.commit()
 
 
+def _norm_created_utc(v: Any) -> Any:
+    """把 created_utc 归一为 naive UTC datetime（TIMESTAMP 列语义）。
+
+    覆盖三种真实形态：epoch 数字（int/float）、epoch 文本（"1790755200"）、
+    ISO 文本（"2026-09-27T02:42:49" / 带 Z / 带毫秒）。返回 None 原样。
+    """
+    if v is None:
+        return None
+    if isinstance(v, (int, float)):
+        return dt.datetime.fromtimestamp(v, tz=dt.timezone.utc).replace(tzinfo=None)
+    if isinstance(v, str):
+        s = v.strip()
+        if not s:
+            return None
+        # epoch 文本：纯数字（可带小数点）
+        if s.replace(".", "", 1).isdigit():
+            return dt.datetime.fromtimestamp(
+                float(s), tz=dt.timezone.utc
+            ).replace(tzinfo=None)
+        # ISO 文本：把 'T' 换成空格（convert_timestamp 只认空格分隔），去 Z
+        if "T" in s:
+            s = s.replace("T", " ").rstrip("Z")
+        if s.endswith("Z"):
+            s = s[:-1]
+        if "+" in s or "-" in s[10:]:
+            try:
+                parsed = dt.datetime.fromisoformat(s)
+                if parsed.tzinfo is not None:
+                    return parsed.astimezone(dt.timezone.utc).replace(tzinfo=None)
+            except ValueError:
+                pass
+        try:
+            return dt.datetime.fromisoformat(s)
+        except ValueError:
+            # 已是带空格的 ISO 文本，原样保留（convert_timestamp 可解析）
+            return s
+    return v
+
+
 def _bind_row(row: Dict[str, Any], columns) -> List[Any]:
     """把 row 转成绑定参数：raw_json（dict）序列化为 JSON 文本；
-    created_utc（epoch int）转 naive UTC datetime（TIMESTAMP 列语义）。"""
+    created_utc 归一为 naive UTC datetime（TIMESTAMP 列语义）。"""
     out = []
     for col in columns:
         v = row.get(col)
         if col == "raw_json" and isinstance(v, dict):
             v = _json.dumps(v, ensure_ascii=False)
-        if col == "created_utc" and isinstance(v, (int, float)):
-            v = dt.datetime.fromtimestamp(
-                v, tz=dt.timezone.utc
-            ).replace(tzinfo=None)
+        if col == "created_utc":
+            v = _norm_created_utc(v)
         out.append(v)
     return out
 
 
 def _migrate_created_utc(conn) -> None:
-    """把旧库中存成 epoch 数字（integer/real/text）的 created_utc 迁移为 ISO 时间（幂等）。
+    """把旧库中非标准 created_utc 迁移为 "YYYY-MM-DD HH:MM:SS"（幂等）。
 
-    早期版本 RSS raw_json 的 created_utc 直接存 epoch int，TIMESTAMP 列
-    在 PARSE_DECLTYPES 下会触发 convert_timestamp 的 split 报错
-    （not enough values to unpack）。datetime(x, 'unixepoch') 生成
-    "YYYY-MM-DD HH:MM:SS"（UTC），幂等：已迁移的行带空格/连字符不再匹配。
-    条件覆盖 integer/real/text 三种存储类型，且只处理纯数字（无空格无连字符），
-    避免把已迁移的 ISO 文本或 NULL 再更新。
+    早期版本存在三种形态，TIMESTAMP 列在 PARSE_DECLTYPES 下都会触发
+    convert_timestamp 的 split 报错（not enough values to unpack）：
+    - epoch 数字（integer/real，如 1790755200）
+    - epoch 文本（text "1790755200"）
+    - ISO 文本（text "2026-09-27T02:42:49"，带 'T' 无空格）
+    迁移规则：
+    - 含 'T' → datetime(replace(T,' '))（无空格值转成可解析格式）
+    - 纯数字（无空格无连字符）→ datetime(x, 'unixepoch')
+    已迁移的 "YYYY-MM-DD HH:MM:SS"（带空格、带连字符）两个分支都不命中，幂等。
     """
     for table in ("reddit_posts", "reddit_comments"):
         try:
             cur = conn.execute(
-                f"UPDATE {table} SET created_utc = datetime(created_utc, 'unixepoch')"
+                f"UPDATE {table} SET created_utc = CASE"
+                "   WHEN created_utc LIKE '%T%'"
+                "       THEN datetime(replace(created_utc, 'T', ' '))"
+                "   ELSE datetime(created_utc, 'unixepoch') END"
                 " WHERE created_utc IS NOT NULL"
-                "   AND created_utc GLOB '[0-9]*'"
-                "   AND created_utc NOT LIKE '% %'"
-                "   AND created_utc NOT LIKE '%-%'"
+                "   AND (created_utc LIKE '%T%'"
+                "        OR (created_utc GLOB '[0-9]*'"
+                "            AND created_utc NOT LIKE '% %'"
+                "            AND created_utc NOT LIKE '%-%'))"
             )
         except sqlite3.OperationalError as exc:
             logger.warning("Skip migrate on %s: %s", table, exc)

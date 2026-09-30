@@ -282,3 +282,76 @@ def test_migrate_created_utc_old_epoch_rows(tmp_path):
     assert isinstance(v1, dt.datetime) and v1 == dt.datetime(2026, 9, 30, 8, 0)
     assert isinstance(v2, dt.datetime) and v2 == dt.datetime(2026, 9, 30, 8, 0, 1)
     conn.close()
+
+
+def test_migrate_created_utc_iso_t_rows(tmp_path):
+    """旧库中 created_utc 存成带 'T' 的 ISO 文本（无空格）时迁移后查询正常。
+
+    服务器真实数据形态是 '2026-09-27T02:42:49'：convert_timestamp 的
+    val.split(b' ') 只得到 1 段，同样触发 ValueError。迁移应把 'T' 换成空格。
+    """
+    import datetime as dt
+
+    from collector import storage
+
+    db = tmp_path / "test.db"
+    conn = storage.connect(str(db))
+    storage.init_schema(conn, "sql/schema.sql")
+    conn.execute(
+        "INSERT INTO reddit_posts"
+        " (post_id, subreddit, title, selftext, created_utc, score,"
+        "  upvote_ratio, num_comments, permalink, flair, raw_json)"
+        " VALUES ('t3_iso1', 'pourover', 'Iso', 'Body',"
+        "         '2026-09-27T02:42:49', 0, NULL, 0,"
+        "         '/r/pourover/comments/iso1/x', NULL, '{}')"
+    )
+    conn.execute(
+        "INSERT INTO reddit_posts"
+        " (post_id, subreddit, title, selftext, created_utc, score,"
+        "  upvote_ratio, num_comments, permalink, flair, raw_json)"
+        " VALUES ('t3_iso2', 'pourover', 'Iso2', 'Body',"
+        "         '2026-09-27T02:42:49.123456', 0, NULL, 0,"
+        "         '/r/pourover/comments/iso2/x', NULL, '{}')"
+    )
+    conn.commit()
+    storage.init_schema(conn, "sql/schema.sql")
+
+    v1 = conn.execute(
+        "SELECT created_utc FROM reddit_posts WHERE post_id = 't3_iso1'"
+    ).fetchone()[0]
+    v2 = conn.execute(
+        "SELECT created_utc FROM reddit_posts WHERE post_id = 't3_iso2'"
+    ).fetchone()[0]
+    assert isinstance(v1, dt.datetime) and v1 == dt.datetime(2026, 9, 27, 2, 42, 49)
+    assert isinstance(v2, dt.datetime) and v2 == dt.datetime(2026, 9, 27, 2, 42, 49)
+    conn.close()
+
+
+def test_upsert_posts_created_utc_iso_t_bind(tmp_path):
+    """upsert 传入带 'T' 的 ISO 文本 created_utc 时，入库后查询返回 datetime。"""
+    import datetime as dt
+
+    from collector import storage
+
+    db = tmp_path / "test.db"
+    conn = storage.connect(str(db))
+    storage.init_schema(conn, "sql/schema.sql")
+    row = {
+        "post_id": "t3_bind1",
+        "subreddit": "espresso",
+        "title": "Bind",
+        "selftext": "Body",
+        "created_utc": "2026-09-27T02:42:49",
+        "score": 3,
+        "upvote_ratio": None,
+        "num_comments": 1,
+        "permalink": "/r/espresso/comments/bind1/x",
+        "flair": None,
+        "raw_json": {},
+    }
+    assert storage.upsert_posts(conn, [row]) == 1
+    v = conn.execute(
+        "SELECT created_utc FROM reddit_posts WHERE post_id = 't3_bind1'"
+    ).fetchone()[0]
+    assert isinstance(v, dt.datetime) and v == dt.datetime(2026, 9, 27, 2, 42, 49)
+    conn.close()
