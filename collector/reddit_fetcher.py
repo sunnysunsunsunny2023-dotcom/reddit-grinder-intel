@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import re
+import subprocess
 import time
 import xml.etree.ElementTree as ET
 from typing import Any, Dict, List, Optional
@@ -225,20 +226,50 @@ class RedditFetcher:
         self._throttle()
         return posts
 
-    def _fetch_rss(self, subreddit: str, limit: int = 100) -> List[Dict[str, Any]]:
-        """从 RSS 端点拉取并解析为与 JSON 兼容的结构。"""
-        url = REDDIT_RSS_BASE.format(subreddit=subreddit)
-        params: Dict[str, Any] = {"limit": min(limit, 100)}
+    def _curl_get_text(self, url: str) -> tuple[str, str]:
+        """用 curl 拉取文本。
+
+        Reddit 对 python-requests 的 TLS/header 指纹在 RSS 端点返回 429，
+        而同 IP 下 curl 稳定 200（实测多轮）。RSS 是纯文本获取，curl 足够。
+        返回 (http_status, body)。
+        """
+        ua = self._session.headers.get("User-Agent") or DEFAULT_USER_AGENT
+        marker = "__REDDIT_HTTP_%{http_code}__"
         try:
-            resp = self._session.get(url, params=params, timeout=self.timeout)
-        except requests.RequestException as exc:
-            raise RedditFetchError(f"GET {url} failed: {exc}") from exc
-        if resp.status_code != 200:
+            proc = subprocess.run(
+                [
+                    "curl", "-sS", "--max-time", str(int(self.timeout)),
+                    "-A", ua, "-w", "\n" + marker, url,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=self.timeout + 5,
+            )
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            raise RedditFetchError(f"curl GET {url} failed: {exc}") from exc
+        if proc.returncode != 0:
             raise RedditFetchError(
-                f"Reddit RSS returned {resp.status_code} for r/{subreddit}"
+                f"curl GET {url} failed: {proc.stderr.strip() or proc.returncode}"
+            )
+        body = proc.stdout
+        m = re.search(r"__REDDIT_HTTP_(\d{3})__\s*$", body)
+        if not m:
+            raise RedditFetchError(f"curl GET {url}: cannot parse http status")
+        return m.group(1), body[: m.start()].rstrip("\n")
+
+    def _fetch_rss(self, subreddit: str, limit: int = 100) -> List[Dict[str, Any]]:
+        """从 RSS 端点拉取并解析为与 JSON 兼容的结构（curl 拉取，规避 requests 指纹限速）。"""
+        url = f"{REDDIT_RSS_BASE.format(subreddit=subreddit)}?limit={min(limit, 100)}"
+        try:
+            status, xml_text = self._curl_get_text(url)
+        except RedditFetchError as exc:
+            raise RedditFetchError(f"GET {url} failed: {exc}") from exc
+        if status != "200":
+            raise RedditFetchError(
+                f"Reddit RSS returned {status} for r/{subreddit}"
             )
         try:
-            posts = parse_rss_feed(resp.text)
+            posts = parse_rss_feed(xml_text)
         except ET.ParseError as exc:
             raise RedditFetchError(
                 f"Invalid RSS XML from Reddit for r/{subreddit}: {exc}"

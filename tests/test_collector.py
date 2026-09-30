@@ -98,8 +98,8 @@ def test_parse_rss_feed():
     assert p["score"] == 0
 
 
-def test_rss_fallback_when_json_403():
-    """JSON 403 时自动 fallback 到 RSS；RSS 也失败时保留原始 403 错误。"""
+def test_rss_fallback_when_json_403(monkeypatch):
+    """JSON 403 时自动 fallback 到 RSS（curl 拉取）；RSS 也失败时保留原始 403 错误。"""
 
     class FakeResp:
         def __init__(self, status, text=""):
@@ -117,20 +117,24 @@ def test_rss_fallback_when_json_403():
                 return FakeResp(403)
             return FakeResp(200, SAMPLE_RSS)
 
+    curl_calls = []
+
+    def fake_run(cmd, capture_output=None, text=None, timeout=None):
+        curl_calls.append(cmd)
+        proc = type("Proc", (), {"returncode": 0, "stdout": SAMPLE_RSS + "\n__REDDIT_HTTP_200__", "stderr": ""})
+        return proc
+
+    monkeypatch.setattr("collector.reddit_fetcher.subprocess.run", fake_run)
     f = RedditFetcher(session=FakeSession())
     posts = f.fetch_new_posts("pourover", limit=5)
     assert len(posts) == 2
     assert f._session.calls[0].endswith(".json")
-    assert f._session.calls[1].endswith(".rss")
+    assert len(curl_calls) == 1
+    assert ".rss" in curl_calls[0][-1]
 
 
-def test_prefer_rss_skips_json():
-    """prefer_rss=True 时直接走 RSS，不先打 JSON（避免 403 试探污染 IP 限速窗口）。"""
-
-    class FakeResp:
-        def __init__(self, status, text=""):
-            self.status_code = status
-            self.text = text
+def test_prefer_rss_skips_json(monkeypatch):
+    """prefer_rss=True 时直接走 RSS（curl），不先打 JSON（避免 403 试探污染 IP 限速窗口）。"""
 
     class FakeSession:
         def __init__(self):
@@ -139,15 +143,21 @@ def test_prefer_rss_skips_json():
 
         def get(self, url, params=None, timeout=None):
             self.calls.append(url)
-            if url.endswith(".json"):
-                return FakeResp(403)
-            return FakeResp(200, SAMPLE_RSS)
+            raise AssertionError("JSON should not be called in prefer_rss mode")
 
+    curl_calls = []
+
+    def fake_run(cmd, capture_output=None, text=None, timeout=None):
+        curl_calls.append(cmd)
+        proc = type("Proc", (), {"returncode": 0, "stdout": SAMPLE_RSS + "\n__REDDIT_HTTP_200__", "stderr": ""})
+        return proc
+
+    monkeypatch.setattr("collector.reddit_fetcher.subprocess.run", fake_run)
     f = RedditFetcher(session=FakeSession(), prefer_rss=True)
     posts = f.fetch_new_posts("pourover", limit=5)
     assert len(posts) == 2
-    assert len(f._session.calls) == 1
-    assert f._session.calls[0].endswith(".rss")
+    assert len(curl_calls) == 1
+    assert ".rss" in curl_calls[0][-1]
 
 
 def test_load_env_file(tmp_path, monkeypatch):
