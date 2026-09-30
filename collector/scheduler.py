@@ -78,10 +78,10 @@ def run_once(
 
         summary: dict = {"runs": [], "total_posts_new": 0}
         for idx, subreddit in enumerate(subreddits):
-            # Reddit RSS 端点对同 IP 短窗口限速（实测连续请求第二次 429），
-            # 多 subreddit 之间留 30s 缓冲，避免一次抓取内互相触发限速。
+            # Reddit RSS 端点对同 IP 短窗口限速（实测：4 分钟间隔没问题，
+            # 30s 间隔第二次 429），多 subreddit 之间留 120s 缓冲。
             if idx > 0:
-                time.sleep(30)
+                time.sleep(120)
             run_id = start_fetch_run(conn, subreddit)
             try:
                 raw_posts = fetcher.fetch_new_posts(subreddit, limit=limit)
