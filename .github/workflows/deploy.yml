@@ -83,9 +83,10 @@ jobs:
           command_timeout: 20m
           script: |
             set -e
-            echo "==> Reddit 连通性（已知：JSON 403 → fetcher 自动切 RSS，实测 RSS 200）"
-            curl -s -o /dev/null -w "rss: %{http_code}\n" --max-time 15 -A "linux:reddit-grinder-intel:v0.1.0" "https://www.reddit.com/r/pourover/new/.rss?limit=1" || echo "rss: network-fail"
             echo "==> 完整验证（手动触发）：collector 抓取 + 入库 + API + DeepSeek 分析"
+            # 注意：不要在此处先 curl Reddit 探活——RSS 端点对同 IP 短窗口限速，
+            # 探活请求会导致 collector 的 RSS 拉取 429。让 collector 成为首个请求。
+            sleep 2
             cd /opt/reddit-intel
             sudo -u reddit-intel ./.venv/bin/python -m collector.scheduler --subreddits pourover espresso --limit 10
             echo "==> 数据库行数"

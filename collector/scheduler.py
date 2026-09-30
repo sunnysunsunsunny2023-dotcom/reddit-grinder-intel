@@ -17,6 +17,7 @@ import argparse
 import logging
 import os
 import sys
+import time
 from typing import List
 
 from .comments import CommentsFetcher
@@ -76,7 +77,11 @@ def run_once(
         comments_fetcher = CommentsFetcher(fetcher)
 
         summary: dict = {"runs": [], "total_posts_new": 0}
-        for subreddit in subreddits:
+        for idx, subreddit in enumerate(subreddits):
+            # Reddit RSS 端点对同 IP 短窗口限速（实测连续请求第二次 429），
+            # 多 subreddit 之间留 30s 缓冲，避免一次抓取内互相触发限速。
+            if idx > 0:
+                time.sleep(30)
             run_id = start_fetch_run(conn, subreddit)
             try:
                 raw_posts = fetcher.fetch_new_posts(subreddit, limit=limit)
