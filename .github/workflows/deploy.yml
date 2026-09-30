@@ -81,14 +81,7 @@ jobs:
             cd /opt/reddit-intel
             sudo -u reddit-intel ./.venv/bin/python -m collector.scheduler --subreddits pourover espresso --limit 10
             echo "==> 数据库行数"
-            sudo -u reddit-intel ./.venv/bin/python -c "
-import os, psycopg2
-c = psycopg2.connect(os.environ['DATABASE_URL'])
-with c.cursor() as cur:
-    for t in ['reddit_posts','reddit_comments','fetch_runs','analysis_batches','analysis_results']:
-        cur.execute(f'SELECT count(*) FROM {t}')
-        print(t, cur.fetchone()[0])
-"
+            sudo -u reddit-intel ./.venv/bin/python deploy/verify_install.py
             echo "==> API analysis-batch（不跑 LLM 则确定性统计可返回；ANALYZER 配置后返回完整）"
             curl -sf --max-time 60 -H "X-API-Key: $REDDIT_API_KEY" \
               "http://127.0.0.1:8086/api/reddit/analysis-batch?report_type=daily&hours=24" | head -c 600 || echo "(analysis-batch 需 ANALYZER_API_KEY 或帖子数据)"
