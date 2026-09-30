@@ -1,3 +1,4 @@
+# workflow re-register marker 2026-09-30
 name: Deploy Reddit Intel
 
 concurrency:
