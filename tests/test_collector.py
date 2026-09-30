@@ -148,3 +148,19 @@ def test_prefer_rss_skips_json():
     assert len(posts) == 2
     assert len(f._session.calls) == 1
     assert f._session.calls[0].endswith(".rss")
+
+
+def test_load_env_file(tmp_path, monkeypatch):
+    """load_env_file 读取 .env 注入环境变量（不覆盖已有值）。"""
+    from collector.scheduler import load_env_file
+
+    env_file = tmp_path / "test.env"
+    env_file.write_text(
+        'REDDIT_PREFER_RSS=1\nREDDIT_USER_AGENT="custom ua"\nALREADY_SET=old\n'
+    )
+    monkeypatch.setenv("ALREADY_SET", "keepme")
+    monkeypatch.delenv("REDDIT_PREFER_RSS", raising=False)
+    load_env_file(str(env_file))
+    assert __import__("os").environ["REDDIT_PREFER_RSS"] == "1"
+    assert __import__("os").environ["REDDIT_USER_AGENT"] == "custom ua"
+    assert __import__("os").environ["ALREADY_SET"] == "keepme"

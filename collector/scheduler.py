@@ -37,6 +37,28 @@ logger = logging.getLogger(__name__)
 DEFAULT_SUBREDDITS = ["pourover", "espresso"]
 
 
+def load_env_file(path: str = "/opt/reddit-intel/.env") -> None:
+    """轻量加载 .env（不覆盖已存在的环境变量）。
+
+    systemd 服务通过 EnvironmentFile 注入 env，但 CI 手动
+    `sudo -u reddit-intel python -m collector.scheduler` 是裸环境，
+    需要自己读 .env（REDDIT_PREFER_RSS / REDDIT_USER_AGENT 等）。
+    """
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, value = line.partition("=")
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if key and key not in os.environ:
+                    os.environ[key] = value
+    except OSError:
+        pass
+
+
 def run_once(
     subreddits: List[str],
     limit: int = 100,
@@ -126,6 +148,7 @@ def main(argv: List[str] | None = None) -> int:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
+    load_env_file()
     try:
         summary = run_once(
             subreddits=args.subreddits,
