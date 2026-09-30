@@ -39,7 +39,7 @@ def fetch_payload(
     hours: int = 24,
 ) -> Dict[str, Any]:
     """调用 8086 analysis-batch API，返回 payload 字典。"""
-    url = f"{api_base.rstrip('/')}/api/analysis-batch?report_type={report_type}&hours={hours}"
+    url = f"{api_base.rstrip('/')}/api/reddit/analysis-batch?report_type={report_type}&hours={hours}"
     req = urllib.request.Request(url, method="GET")
     req.add_header("X-API-Key", api_key)
     req.add_header("Accept", "application/json")
@@ -134,7 +134,7 @@ def build_pulse(payload: Dict[str, Any], report_date: Optional[str] = None) -> D
         )
 
     if not report_date:
-        ts = period.get("start") or period.get("end") or payload.get("report_date")
+        ts = period.get("end") or period.get("start") or payload.get("report_date")
         report_date = _normalize_date(ts)
 
     return {

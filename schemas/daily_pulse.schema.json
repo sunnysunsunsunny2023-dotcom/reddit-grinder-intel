@@ -1,0 +1,147 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/sunnysunsunsunny2023-dotcom/reddit-grinder-intel/blob/main/schemas/daily_pulse.schema.json",
+  "title": "Reddit Grinder Daily Pulse",
+  "description": "日报：异常检测 + 当日行动提示。所有数值来自阿里云确定性统计与 DeepSeek 分析（ADR-001）。与 weekly_intelligence.schema.json 相互独立，禁止共用。",
+  "type": "object",
+  "required": [
+    "report_date",
+    "period",
+    "today_in_one_sentence",
+    "kpi",
+    "signal_alerts",
+    "top_posts",
+    "geimori_watch",
+    "today_actions",
+    "metadata"
+  ],
+  "properties": {
+    "report_date": {
+      "type": "string",
+      "description": "报告日期（Asia/Shanghai 本地日期，YYYY-MM-DD）"
+    },
+    "period": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": "string", "description": "窗口开始 ISO8601 UTC" },
+        "end": { "type": "string", "description": "窗口结束 ISO8601 UTC" }
+      }
+    },
+    "today_in_one_sentence": {
+      "type": "string",
+      "description": "1-2 句话总结今日（spec 5.1.A）"
+    },
+    "kpi": {
+      "type": "object",
+      "required": [
+        "total_new_posts",
+        "grinder_related_posts",
+        "grinder_ratio",
+        "geimori_mentions",
+        "competitor_mentions",
+        "high_signal_topics",
+        "alert_count"
+      ],
+      "properties": {
+        "total_new_posts": { "type": "integer", "minimum": 0 },
+        "grinder_related_posts": { "type": "integer", "minimum": 0 },
+        "grinder_ratio": { "type": "number", "minimum": 0 },
+        "geimori_mentions": { "type": "integer", "minimum": 0 },
+        "competitor_mentions": { "type": "integer", "minimum": 0 },
+        "high_signal_topics": { "type": "integer", "minimum": 0 },
+        "alert_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "signal_alerts": {
+      "type": "array",
+      "description": "只突出真正异常变化（spike/emerging/负面/竞品发布/高互动帖），不重复长期常识",
+      "items": {
+        "type": "object",
+        "required": ["topic", "mentions_24h", "avg_7d", "avg_30d", "vs_7d", "vs_30d", "status", "confidence", "evidence_count"],
+        "properties": {
+          "topic": { "type": "string" },
+          "mentions_24h": { "type": "number" },
+          "avg_7d": { "type": "number" },
+          "avg_30d": { "type": "number" },
+          "vs_7d": { "type": "number", "description": "24h / 7d avg 倍数" },
+          "vs_30d": { "type": "number", "description": "24h / 30d avg 倍数" },
+          "status": { "enum": ["spike", "emerging", "negative", "competitor", "high_engagement", "stable"] },
+          "confidence": { "enum": ["high", "medium", "low"] },
+          "evidence_count": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "top_posts": {
+      "type": "array",
+      "description": "最多 3-5 篇",
+      "items": {
+        "type": "object",
+        "required": ["post_id", "title", "subreddit", "score", "comments", "topic", "why_it_matters", "permalink"],
+        "properties": {
+          "post_id": { "type": "string" },
+          "title": { "type": "string" },
+          "subreddit": { "type": "string" },
+          "score": { "type": "integer" },
+          "comments": { "type": "integer" },
+          "topic": { "type": "string" },
+          "why_it_matters": { "type": "string" },
+          "permalink": { "type": "string", "description": "绝对 URL（https://www.reddit.com 开头）" }
+        }
+      }
+    },
+    "geimori_watch": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "无品牌提及时的固定文案：No meaningful Geimori mention in the last 24 hours."
+        },
+        {
+          "type": "object",
+          "required": ["product", "sentiment", "issue_theme", "evidence", "severity", "recommended_response"],
+          "properties": {
+            "product": { "type": "string" },
+            "sentiment": { "enum": ["positive", "neutral", "negative", "mixed"] },
+            "issue_theme": { "type": "string" },
+            "evidence": { "type": "array", "items": { "type": "string" } },
+            "severity": { "enum": ["critical", "high", "medium", "low", "info"] },
+            "recommended_response": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "today_actions": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "无强信号时的固定文案：No immediate action required today."
+        },
+        {
+          "type": "array",
+          "description": "最多 3 条",
+          "items": {
+            "type": "object",
+            "required": ["action", "why", "evidence_count", "confidence"],
+            "properties": {
+              "action": { "type": "string" },
+              "why": { "type": "string" },
+              "evidence_count": { "type": "integer", "minimum": 0 },
+              "confidence": { "enum": ["high", "medium", "low"] },
+              "category": { "enum": ["Ad", "Content", "Product", "Community"] }
+            }
+          }
+        }
+      ]
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["batch_id", "analysis_version", "generated_at", "source"],
+      "properties": {
+        "batch_id": { "type": ["integer", "string"] },
+        "analysis_version": { "type": "string" },
+        "generated_at": { "type": "string", "description": "Coze 渲染时间 ISO8601" },
+        "source": { "type": "string", "description": "API URL 或文件来源" }
+      }
+    }
+  }
+}

@@ -90,8 +90,9 @@ def _context_md(context: Dict[str, Any]) -> str:
         for topic, t in context["topic_trends"].items():
             lines.append(
                 f"- {topic}: mentions={t['mentions']} unique_posts={t['unique_posts']} "
-                f"engagement={t['engagement']} avg_7d={t['avg_7d']} "
-                f"avg_30d={t['avg_30d']} trend={t['trend']}"
+                f"engagement={t['engagement']} "
+                f"avg_7d={t.get('avg_7d', '—')} "
+                f"avg_30d={t.get('avg_30d', '—')} trend={t['trend']}"
             )
         lines.append("")
 
@@ -295,6 +296,8 @@ def build_weekly_context(
 
     series_30d = aggregate.topic_series(conn, 30, subreddit=subreddit)
     base30 = aggregate.baseline_avg(series_30d, 30)
+    series_7d = aggregate.topic_series(conn, 7, subreddit=subreddit)
+    base7 = aggregate.baseline_avg(series_7d, 7)
 
     week_stats = aggregate.mention_stats(
         posts_week, keywords.TOPIC_KEYWORDS
@@ -315,6 +318,7 @@ def build_weekly_context(
             **st,
             "previous_week": prev,
             "wow_change_pct": wow,
+            "avg_7d": base7[topic],
             "avg_30d": base30[topic],
             "trend": status,
         }
@@ -328,9 +332,7 @@ def build_weekly_context(
         "posts": posts_week,
         "posts_previous_week": posts_prev,
         "statistics": aggregate.compute_kpi(posts_week),
-        "baseline_7d": aggregate.baseline_avg(
-            aggregate.topic_series(conn, 7, subreddit=subreddit), 7
-        ),
+        "baseline_7d": base7,
         "baseline_30d": base30,
         "topic_trends": demand_trends,
         "brand_trends": aggregate.brand_mentions(posts_week),

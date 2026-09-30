@@ -58,3 +58,21 @@
 - **修复**：改为独立脚本 `deploy/migrate_created_utc.py` + 一行命令调用
 - **回归用例**：无单测（CI 语法解析覆盖），由每次 workflow 解析保证
 - **版本**：v0.1.4（71ee6b5）
+
+### RGI-006：Weekly analysis-batch 502 — `KeyError: 'avg_7d'`
+- **现象**：`{"detail":"analysis failed: 'avg_7d'"}`（report_type=weekly 必现）
+- **根因**：`build_weekly_context` 的 `topic_trends`（demand_trends 结构）只含 `avg_30d`、无 `avg_7d`，而 `_context_md` 渲染 `t['avg_7d']` 直接 KeyError；Full verification 只验过 daily，weekly 从未跑通
+- **修复**：
+  - `analyst/analyzer.py::build_weekly_context`：补 `series_7d/base7`，demand_trends 每项加 `avg_7d`（7d 日均基线），`baseline_7d` 复用 base7
+  - `_context_md` 对 topic_trends 的 `avg_7d/avg_30d` 改为 `t.get(..., '—')` 容错
+- **回归用例**：
+  - `tests/test_weekly_context.py::test_context_md_tolerates_missing_avg_7d`
+  - `tests/test_weekly_context.py::test_build_weekly_context_includes_avg_7d`
+- **版本**：v0.2.2
+
+### RGI-007：Coze 渲染 API 路径 404 — `/api/analysis-batch` vs `/api/reddit/analysis-batch`
+- **现象**：Coze 侧调 `http://<IP>:8086/api/analysis-batch` 返回 404，真实路由带 `/reddit/` 前缀
+- **根因**：main.py 路由定义为 `/api/reddit/analysis-batch`，渲染模块写成了无前缀路径
+- **修复**：`coze/render_daily.py::fetch_payload` 改 `api/reddit/analysis-batch`
+- **回归用例**：`tests/test_render_daily.py::test_fetch_payload_rejects_non_dict`（HTTP 层）＋真实公网 dry-run 200
+- **版本**：v0.2.2
