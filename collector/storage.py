@@ -150,13 +150,17 @@ def _migrate_created_utc(conn) -> None:
     避免把已迁移的 ISO 文本或 NULL 再更新。
     """
     for table in ("reddit_posts", "reddit_comments"):
-        cur = conn.execute(
-            f"UPDATE {table} SET created_utc = datetime(created_utc, 'unixepoch')"
-            " WHERE created_utc IS NOT NULL"
-            "   AND created_utc GLOB '[0-9]*'"
-            "   AND created_utc NOT LIKE '% %'"
-            "   AND created_utc NOT LIKE '%-%'"
-        )
+        try:
+            cur = conn.execute(
+                f"UPDATE {table} SET created_utc = datetime(created_utc, 'unixepoch')"
+                " WHERE created_utc IS NOT NULL"
+                "   AND created_utc GLOB '[0-9]*'"
+                "   AND created_utc NOT LIKE '% %'"
+                "   AND created_utc NOT LIKE '%-%'"
+            )
+        except sqlite3.OperationalError as exc:
+            logger.warning("Skip migrate on %s: %s", table, exc)
+            continue
         if cur.rowcount:
             logger.info("Migrated %d created_utc rows in %s", cur.rowcount, table)
     conn.commit()
