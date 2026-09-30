@@ -17,9 +17,13 @@ import html
 import json
 import os
 import sys
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from coze.render_daily import (
+# 保证直接运行（python3 coze/render_weekly.py）时项目根在 sys.path，可 from coze.render_daily import
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from coze.render_daily import (  # noqa: E402
     _e,
     _fmt_num,
     _fmt_pct,
@@ -121,7 +125,7 @@ def build_weekly_pulse(payload: Dict[str, Any], report_date: Optional[str] = Non
         )
 
     if not report_date:
-        ts = period.get("start") or period.get("end") or payload.get("report_date")
+        ts = period.get("end") or period.get("start") or payload.get("report_date")
         report_date = _normalize_date(ts)
 
     return {

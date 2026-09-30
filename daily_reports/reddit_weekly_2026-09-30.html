@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reddit 磨豆机情报 · Weekly Intelligence — 2026-09-30</title>
+<style>
+  :root {
+    --canvas: #f6f0e4;
+    --surface: #fffdf7;
+    --surface-soft: #efe5d3;
+    --ink: #3b2a1b;
+    --ink-soft: #7a624c;
+    --line: #e2d5bf;
+    --accent: #a96a3b;
+    --accent-strong: #7c4a24;
+    --accent-ink: #fffaf1;
+    --status-spike: #b0402e;
+    --status-emerging: #c2701e;
+    --status-rising: #a96a3b;
+    --status-stable: #5f7a46;
+    --status-declining: #8a857c;
+    --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --pad-page: clamp(16px, 4vw, 40px);
+    --r-sm: 6px;
+    --r-md: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--canvas); color: var(--ink);
+    font-family: var(--font-body); line-height: 1.55;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: var(--pad-page); }
+  header.hero {
+    background: linear-gradient(135deg, #3b2a1b 0%, #5a4026 100%);
+    color: var(--accent-ink); border-radius: var(--r-md);
+    padding: clamp(20px, 4vw, 34px); margin-bottom: 20px;
+  }
+  header.hero .kicker {
+    font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: #e8c89a; margin: 0 0 6px; font-family: var(--font-mono);
+  }
+  header.hero h1 { margin: 0 0 10px; font-size: clamp(24px, 4vw, 34px); line-height: 1.2; }
+  .kpi-strip { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .kpi-chip {
+    background: rgba(255,250,241,0.12); border: 1px solid rgba(232,200,154,0.35);
+    border-radius: 999px; padding: 4px 12px; font-size: 13px; color: #f5ead6;
+    font-family: var(--font-mono);
+  }
+  h2 { font-size: clamp(18px, 2.4vw, 22px); margin: 0 0 12px; }
+  section.panel {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--r-md); padding: clamp(16px, 3vw, 24px); margin-bottom: 18px;
+  }
+  .exec-item { padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .exec-item:last-child { border-bottom: 0; }
+  .exec-item h3 { margin: 0 0 4px; font-size: 15px; }
+  .exec-item p { margin: 0; color: var(--ink-soft); font-size: 13px; }
+  .table-scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13px; }
+  caption { text-align: left; color: var(--ink-soft); font-size: 12px; padding: 0 0 8px; }
+  th, td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { font-size: 12px; color: var(--ink-soft); font-weight: 600; }
+  td.num { font-family: var(--font-mono); text-align: right; white-space: nowrap; }
+  .td-note { color: var(--ink-soft); font-size: 12px; margin-top: 2px; max-width: 260px; }
+  .trend {
+    display: inline-block; border-radius: 999px; padding: 1px 10px;
+    font-size: 11px; font-family: var(--font-mono); background: var(--surface-soft);
+  }
+  .trend-rising, .trend-spike { background: #f9e6e0; color: #b0402e; }
+  .trend-emerging { background: #fbe9d6; color: #c2701e; }
+  .trend-declining { background: #efece6; color: #8a857c; }
+  .trend-stable { background: #e9f0dd; color: #5f7a46; }
+  .comp-card { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 12px 14px; margin-bottom: 12px; }
+  .comp-card:last-child { margin-bottom: 0; }
+  .comp-head, .gv-head, .act-head, .pri-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .comp-head h3, .act-head h3, .pri-head h3 { margin: 0; font-size: 15px; }
+  .c-row { margin: 6px 0; font-size: 13px; }
+  .c-label {
+    display: inline-block; background: var(--surface-soft); color: var(--ink-soft);
+    border-radius: 4px; padding: 1px 8px; font-size: 11px; margin-right: 8px;
+  }
+  .c-note { margin-top: 6px; color: var(--ink-soft); font-size: 12px; font-style: italic; }
+  .c-links { margin-top: 6px; }
+  .c-links a { color: var(--accent-strong); text-decoration: none; font-size: 13px; margin-right: 10px; }
+  .c-links a:hover { text-decoration: underline; }
+  .gv-head { margin-bottom: 8px; }
+  .gv-col { margin: 8px 0; }
+  .gv-col h4 { margin: 0 0 4px; font-size: 13px; color: var(--ink-soft); }
+  .gv-col ul { margin: 0; padding-left: 20px; font-size: 13px; }
+  .gv-action { margin: 10px 0 0; font-size: 13px; }
+  .pri-item { border-left: 4px solid var(--pc, var(--accent)); border-radius: var(--r-sm); padding: 10px 14px; margin-bottom: 10px; background: var(--surface); border-top: 1px solid var(--line); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .pri-tag {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    color: var(--pc, var(--accent));
+  }
+  .pri-item p { margin: 6px 0 0; color: var(--ink-soft); font-size: 13px; }
+  .act-item { padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .act-item:last-child { border-bottom: 0; }
+  .act-ev { margin: 6px 0 4px; font-size: 13px; }
+  .act-why { margin: 0 0 8px; color: var(--ink-soft); font-size: 13px; }
+  .act-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pill {
+    display: inline-block; background: var(--surface-soft); color: var(--ink-soft);
+    border-radius: 999px; padding: 2px 10px; font-size: 11px; font-family: var(--font-mono);
+  }
+  .pill-sent { background: #e9f0dd; color: #5f7a46; }
+  .pill-cat { background: #e9f0dd; color: #5f7a46; }
+  .empty {
+    background: var(--surface-soft); color: var(--ink-soft);
+    border-radius: var(--r-sm); padding: 14px 16px; font-size: 14px;
+  }
+  footer.foot { color: var(--ink-soft); font-size: 12px; line-height: 1.6; margin-top: 8px; }
+  .foot-meta { font-family: var(--font-mono); }
+  .foot-source { margin-top: 4px; }
+  a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px;
+  }
+  @media print {
+    body { background: #fff; }
+    .wrap { max-width: none; padding: 0; }
+    section.panel, .comp-card, .pri-item { break-inside: avoid; }
+    a { color: inherit; text-decoration: underline; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <p class="kicker">Reddit Grinder Intelligence · Weekly</p>
+    <h1>磨豆机社区周报 — 2026-09-30</h1>
+    <div class="kpi-strip">
+      <span class="kpi-chip">总帖 212</span>
+      <span class="kpi-chip">磨豆机相关 90</span>
+      <span class="kpi-chip">相关占比 42.4%</span>
+      <span class="kpi-chip">Geimori 提及 1</span>
+      <span class="kpi-chip">竞品提及 72</span>
+    </div>
+  </header>
+
+  <section class="panel" aria-label="执行摘要">
+    <h2>Executive Summary</h2>
+    <article class="exec-item"><h3>1. 最大上升趋势</h3><p>espresso (mentions=85, avg_30d=2.4667, trend=spike) 和 pourover (mentions=78, avg_30d=2.4, trend=spike) 是本周讨论量最高的主题，均被阿里云判定为 spike。</p></article>
+<article class="exec-item"><h3>2. 最大下降趋势</h3><p>输入中未提供任何下降趋势的确定性数据，所有列出的主题 trend 均为 spike。</p></article>
+<article class="exec-item"><h3>3. 最大竞品变化</h3><p>fellow 以 mentions=18 成为本周被提及最多的竞品，其次是 kingrinder (mentions=12)。</p></article>
+<article class="exec-item"><h3>4. Geimori 品牌变化</h3><p>Geimori 本周 mentions=1, unique_posts=1, engagement=0，样本极小，无法判断趋势。</p></article>
+<article class="exec-item"><h3>5. 最重要的下周行动</h3><p>workflow (mentions=71, avg_30d=1.9667, trend=spike) 和 grind_consistency (mentions=21, avg_30d=0.6, trend=spike) 的高讨论度表明用户对研磨一致性和工作流效率有强烈需求，建议围绕这些主题创建内容。</p></article>
+  </section>
+
+  <section class="panel" aria-label="需求趋势">
+    <h2>Demand Trends</h2>
+    <div class="table-scroll"><table><caption>本周 vs 上周 vs 30 天基线（数值来自阿里云确定性统计）</caption><thead><tr><th scope="col">主题</th><th scope="col">提及</th><th scope="col">上周</th><th scope="col">WoW</th><th scope="col">讨论份额</th><th scope="col">30d 均值</th><th scope="col">趋势</th><th scope="col">置信</th></tr></thead><tbody><tr><td><strong>espresso</strong><div class="td-note">espresso 是本周讨论量最高的主题，大量帖子涉及意式浓缩的萃取、设备选择和问题排查，如 &#x27;Bitter shots suddenly&#x27; 和 &#x27;Traditional espresso people, can I ask you a few questions?&#x27;。</div></td><td class="num">85</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">2</td><td><span class="trend trend-spike">spike</span></td><td>HIGH</td></tr>
+<tr><td><strong>pourover</strong><div class="td-note">pourover 讨论量紧随 espresso，用户关注研磨度、水质和冲煮技巧，如 &#x27;Post Mortem; too many fines/inconsistent grind?&#x27; 和 &#x27;Water Chemistry&#x27;。</div></td><td class="num">78</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">2</td><td><span class="trend trend-spike">spike</span></td><td>HIGH</td></tr>
+<tr><td><strong>workflow</strong><div class="td-note">workflow 是第三大主题，用户频繁讨论如何优化日常咖啡制作流程，如 &#x27;Desk espresso in a shared house, still sorting out puck prep&#x27; 和 &#x27;A small mod we all love&#x27;。</div></td><td class="num">71</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">1</td><td><span class="trend trend-spike">spike</span></td><td>HIGH</td></tr>
+<tr><td><strong>price_value</strong><div class="td-note">价格与价值是重要考量，许多帖子在特定预算下寻求推荐，如 &#x27;Best affordable espresso machine ? ($150)&#x27; 和 &#x27;I need a full beginner Setup [700€]&#x27;。</div></td><td class="num">55</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">1</td><td><span class="trend trend-spike">spike</span></td><td>HIGH</td></tr>
+<tr><td><strong>grind_speed</strong><div class="td-note">研磨速度被频繁提及，用户关注快速研磨对工作流的影响，如 &#x27;Does anyone else love hand grinding?&#x27; 中对手磨体验的讨论。</div></td><td class="num">44</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">1</td><td><span class="trend trend-spike">spike</span></td><td>HIGH</td></tr>
+<tr><td><strong>durability</strong><div class="td-note">耐用性是用户关心的重点，有帖子抱怨产品故障，如 &#x27;We must stop recommending Kingrinder products&#x27; 和 &#x27;Grind adjustment ring stuck and blown fuse [baratza sette 270wi]&#x27;。</div></td><td class="num">33</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">1</td><td><span class="trend trend-spike">spike</span></td><td>HIGH</td></tr>
+<tr><td><strong>portability</strong><div class="td-note">便携性需求显著，用户寻找旅行或移动使用的设备，如 &#x27;Recommendations for a mobile setup. Budget up to [$200]&#x27; 和 &#x27;What&#x27;s the best travel (not necessarily portable) espresso machine? [No budget]&#x27;。</div></td><td class="num">28</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">0</td><td><span class="trend trend-spike">spike</span></td><td>HIGH</td></tr>
+<tr><td><strong>grind_consistency</strong><div class="td-note">研磨一致性是核心痛点，多个帖子讨论萃取不稳定问题，如 &#x27;Consecutive shots never the same [Gaggia Classic Up - Eureka Specialita]&#x27; 和 &#x27;Post Mortem; too many fines/inconsistent grind?&#x27;。</div></td><td class="num">21</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">0</td><td><span class="trend trend-spike">spike</span></td><td>HIGH</td></tr>
+<tr><td><strong>burr</strong><div class="td-note">刀盘讨论活跃，用户关注刀盘类型和升级，如 &#x27;Sweetest burrs / grinder&#x27; 和 &#x27;Eureka Black Diamond Burrs&#x27;。</div></td><td class="num">17</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">0</td><td><span class="trend trend-spike">spike</span></td><td>HIGH</td></tr>
+<tr><td><strong>noise</strong><div class="td-note">噪音问题被提及，但讨论量相对较低，如 &#x27;Is it normal to hear this click sound one time 2 hours after using the machine&#x27;。</div></td><td class="num">10</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">0</td><td><span class="trend trend-spike">spike</span></td><td>HIGH</td></tr>
+<tr><td><strong>retention</strong><div class="td-note">残留粉量讨论量很小，样本不足，如 &#x27;Question for Eureka Mignon owners&#x27; 中提及。</div></td><td class="num">4</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">0</td><td><span class="trend trend-spike">spike</span></td><td>LOW</td></tr>
+<tr><td><strong>static</strong><div class="td-note">静电问题讨论量极小，样本不足，如 &#x27;Static mess [G-Micron DF-64]&#x27;。</div></td><td class="num">3</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">0</td><td><span class="trend trend-spike">spike</span></td><td>LOW</td></tr></tbody></table></div>
+  </section>
+
+  <section class="panel" aria-label="竞品情报">
+    <h2>Competitor Intelligence</h2>
+    <article class="comp-card"><div class="comp-head"><h3>fellow</h3><span class="pill pill-sent">混合</span><span class="pill">18 提及</span></div><div class="c-row"><span class="c-label">好评</span>Ode 2 搭配 SSP 刀盘受到好评，如 &#x27;Suggestions for getting my Ode 2 (with SSP burrs) to grind my ultra-lights coarser than setting 11&#x27; 中用户认可其性能。</div><div class="c-row"><span class="c-label">槽点</span>有用户抱怨 Fellow Opus 2 表现不佳，如 &#x27;How to improve? [Delohngi EC155/Fellow Opus 2]&#x27; 中提及。</div><div class="c-row"><span class="c-label">机会</span>Fellow 产品价格较高，Geimori 可强调性价比和类似功能。</div><div class="c-note">这是 Reddit 讨论份额，不是市场份额。</div><div class="c-links"><a href="https://www.reddit.com/r/pourover/comments/1wsmg1f/suggestions_for_getting_my_ode_2_with_ssp_burrs" target="_blank" rel="noopener noreferrer">高互动帖 ↗</a> <a href="https://www.reddit.com/r/espresso/comments/1wt0b51/how_to_improve_delohngi_ec155fellow_opus_2" target="_blank" rel="noopener noreferrer">高互动帖 ↗</a> </div></article>
+<article class="comp-card"><div class="comp-head"><h3>kingrinder</h3><span class="pill pill-sent">负面</span><span class="pill">12 提及</span></div><div class="c-row"><span class="c-label">好评</span>K6 手磨在便携设置中受到好评，如 &#x27;The picopresso blew me away&#x27; 中用户称赞其搭配 Picopresso 的效果。</div><div class="c-row"><span class="c-label">槽点</span>有用户强烈批评其耐用性和客户服务，如 &#x27;We must stop recommending Kingrinder products&#x27; 中详细描述了 K6 的故障和客服问题。</div><div class="c-row"><span class="c-label">机会</span>Kingrinder 的负面评价为 Geimori 提供了机会，可突出自身产品的耐用性和客户服务。</div><div class="c-note">这是 Reddit 讨论份额，不是市场份额。</div><div class="c-links"><a href="https://www.reddit.com/r/pourover/comments/1wt85yp/we_must_stop_recommending_kingrinder_products" target="_blank" rel="noopener noreferrer">高互动帖 ↗</a> <a href="https://www.reddit.com/r/espresso/comments/1wtw75m/the_picopresso_blew_me_away" target="_blank" rel="noopener noreferrer">高互动帖 ↗</a> </div></article>
+<article class="comp-card"><div class="comp-head"><h3>1zpresso</h3><span class="pill pill-sent">混合</span><span class="pill">10 提及</span></div><div class="c-row"><span class="c-label">好评</span>J-Ultra 被用户认为口碑良好，如 &#x27;getting super fast shots no matter how fine I grind? [DeLonghi Icona Vintage]&#x27; 中用户提及。</div><div class="c-row"><span class="c-label">槽点</span>有用户遇到萃取问题，如上述帖子中用户使用 J-Ultra 后 shots 仍然过快。</div><div class="c-row"><span class="c-label">机会</span>1zpresso 用户遇到萃取问题，Geimori 可提供解决方案或强调自身产品的易用性。</div><div class="c-note">这是 Reddit 讨论份额，不是市场份额。</div><div class="c-links"><a href="https://www.reddit.com/r/espresso/comments/1wt3tma/getting_super_fast_shots_no_matter_how_fine_i" target="_blank" rel="noopener noreferrer">高互动帖 ↗</a> </div></article>
+<article class="comp-card"><div class="comp-head"><h3>timemore</h3><span class="pill pill-sent">正面</span><span class="pill">10 提及</span></div><div class="c-row"><span class="c-label">好评</span>Black Mirror Dot 秤和 Chestnut C5 Pro 手磨受到好评，如 &#x27;Just got the Timemore Black Mirror Dot! How is it holding up for you guys? Any tips?&#x27; 和 &#x27;So excited&#x27; 中用户表达兴奋。</div><div class="c-row"><span class="c-label">槽点</span>未发现明显抱怨。</div><div class="c-row"><span class="c-label">机会</span>Timemore 产品受欢迎，Geimori 可关注其产品特点，寻找差异化机会。</div><div class="c-note">这是 Reddit 讨论份额，不是市场份额。</div><div class="c-links"><a href="https://www.reddit.com/r/pourover/comments/1wtu8lv/just_got_the_timemore_black_mirror_dot_how_is_it" target="_blank" rel="noopener noreferrer">高互动帖 ↗</a> <a href="https://www.reddit.com/r/pourover/comments/1wrp33z/so_excited" target="_blank" rel="noopener noreferrer">高互动帖 ↗</a> </div></article>
+<article class="comp-card"><div class="comp-head"><h3>lagom</h3><span class="pill pill-sent">正面</span><span class="pill">10 提及</span></div><div class="c-row"><span class="c-label">好评</span>Casa 磨豆机在多个帖子中被提及，用户认可其性能，如 &#x27;Bitter shots suddenly&#x27; 和 &#x27;Two grind settings, and how the cups changed as they cooled&#x27;。</div><div class="c-row"><span class="c-label">槽点</span>未发现明显抱怨。</div><div class="c-row"><span class="c-label">机会</span>Lagom 定位高端，Geimori 可强调性价比。</div><div class="c-note">这是 Reddit 讨论份额，不是市场份额。</div><div class="c-links"><a href="https://www.reddit.com/r/espresso/comments/1wtzau0/bitter_shots_suddenly" target="_blank" rel="noopener noreferrer">高互动帖 ↗</a> <a href="https://www.reddit.com/r/pourover/comments/1wtv7ex/two_grind_settings_and_how_the_cups_changed_as" target="_blank" rel="noopener noreferrer">高互动帖 ↗</a> </div></article>
+<article class="comp-card"><div class="comp-head"><h3>eureka</h3><span class="pill pill-sent">混合</span><span class="pill">10 提及</span></div><div class="c-row"><span class="c-label">好评</span>Mignon 系列被广泛使用，用户认可其性能，如 &#x27;Dialing in question [Eureka Mignon Specialità]&#x27; 和 &#x27;Eureka Black Diamond Burrs&#x27;。</div><div class="c-row"><span class="c-label">槽点</span>有用户遇到 dialing 问题，如 &#x27;Dialing In Distress [Profitec Move/Eureka Mignon Specialita]&#x27; 中描述萃取不稳定。</div><div class="c-row"><span class="c-label">机会</span>Eureka 用户遇到 dialing 困难，Geimori 可强调自身产品的易用性和一致性。</div><div class="c-note">这是 Reddit 讨论份额，不是市场份额。</div><div class="c-links"><a href="https://www.reddit.com/r/espresso/comments/1wtbamd/dialing_in_question_eureka_mignon_specialità" target="_blank" rel="noopener noreferrer">高互动帖 ↗</a> <a href="https://www.reddit.com/r/espresso/comments/1wt9py0/dialing_in_distress_profitec_moveeureka_mignon" target="_blank" rel="noopener noreferrer">高互动帖 ↗</a> </div></article>
+<article class="comp-card"><div class="comp-head"><h3>baratza</h3><span class="pill pill-sent">混合</span><span class="pill">9 提及</span></div><div class="c-row"><span class="c-label">好评</span>Encore ESP 和 Vario+ 被提及，如 &#x27;Grinder upgrade: Baratza ESP → VS4 or DF64?&#x27; 和 &#x27;Experience with the Baratzo Vario+&#x27;。</div><div class="c-row"><span class="c-label">槽点</span>Sette 270wi 出现故障，如 &#x27;Grind adjustment ring stuck and blown fuse [baratza sette 270wi]&#x27;。</div><div class="c-row"><span class="c-label">机会</span>Baratza 产品出现故障，Geimori 可突出自身产品的可靠性。</div><div class="c-note">这是 Reddit 讨论份额，不是市场份额。</div><div class="c-links"><a href="https://www.reddit.com/r/espresso/comments/1wtwht1/grind_adjustment_ring_stuck_and_blown_fuse" target="_blank" rel="noopener noreferrer">高互动帖 ↗</a> <a href="https://www.reddit.com/r/espresso/comments/1wspo7c/grinder_upgrade_baratza_esp_vs4_or_df64" target="_blank" rel="noopener noreferrer">高互动帖 ↗</a> </div></article>
+<article class="comp-card"><div class="comp-head"><h3>df_grinders</h3><span class="pill pill-sent">混合</span><span class="pill">8 提及</span></div><div class="c-row"><span class="c-label">好评</span>DF64 被考虑为升级选项，如 &#x27;Grinder upgrade: Baratza ESP → VS4 or DF64?&#x27;。</div><div class="c-row"><span class="c-label">槽点</span>DF54 被用户抱怨 clogging 和 cross-threading，如 &#x27;Whats a decent affordable grinder? My nice one just died [±$100-150]&#x27;。</div><div class="c-row"><span class="c-label">机会</span>DF 系列存在质量问题，Geimori 可强调自身产品的耐用性。</div><div class="c-note">这是 Reddit 讨论份额，不是市场份额。</div><div class="c-links"><a href="https://www.reddit.com/r/espresso/comments/1wtiwjw/whats_a_decent_affordable_grinder_my_nice_one" target="_blank" rel="noopener noreferrer">高互动帖 ↗</a> <a href="https://www.reddit.com/r/espresso/comments/1wspo7c/grinder_upgrade_baratza_esp_vs4_or_df64" target="_blank" rel="noopener noreferrer">高互动帖 ↗</a> </div></article>
+<article class="comp-card"><div class="comp-head"><h3>comandante</h3><span class="pill pill-sent">中性</span><span class="pill">4 提及</span></div><div class="c-row"><span class="c-label">好评</span>未发现明显赞扬。</div><div class="c-row"><span class="c-label">槽点</span>未发现明显抱怨。</div><div class="c-row"><span class="c-label">机会</span>Comandante 讨论量较低，Geimori 可关注其用户群体。</div><div class="c-note">这是 Reddit 讨论份额，不是市场份额。</div><div class="c-links"></div></article>
+<article class="comp-card"><div class="comp-head"><h3>niche</h3><span class="pill pill-sent">正面</span><span class="pill">3 提及</span></div><div class="c-row"><span class="c-label">好评</span>Niche Zero 受到好评，如 &#x27;Niche Zero and Breville Bambino - Best tips &amp; accessories recs&#x27; 和 &#x27;Just a small upgrade (before and after)&#x27;。</div><div class="c-row"><span class="c-label">槽点</span>未发现明显抱怨。</div><div class="c-row"><span class="c-label">机会</span>Niche 定位高端，Geimori 可强调性价比。</div><div class="c-note">这是 Reddit 讨论份额，不是市场份额。</div><div class="c-links"><a href="https://www.reddit.com/r/espresso/comments/1wtrv30/niche_zero_and_breville_bambino_best_tips" target="_blank" rel="noopener noreferrer">高互动帖 ↗</a> <a href="https://www.reddit.com/r/espresso/comments/1wtr39w/just_a_small_upgrade_before_and_after" target="_blank" rel="noopener noreferrer">高互动帖 ↗</a> </div></article>
+<article class="comp-card"><div class="comp-head"><h3>wilfa</h3><span class="pill pill-sent">中性</span><span class="pill">3 提及</span></div><div class="c-row"><span class="c-label">好评</span>未发现明显赞扬。</div><div class="c-row"><span class="c-label">槽点</span>未发现明显抱怨。</div><div class="c-row"><span class="c-label">机会</span>Wilfa 讨论量较低，Geimori 可关注其用户群体。</div><div class="c-note">这是 Reddit 讨论份额，不是市场份额。</div><div class="c-links"></div></article>
+<article class="comp-card"><div class="comp-head"><h3>mazzer</h3><span class="pill pill-sent">中性</span><span class="pill">2 提及</span></div><div class="c-row"><span class="c-label">好评</span>未发现明显赞扬。</div><div class="c-row"><span class="c-label">槽点</span>未发现明显抱怨。</div><div class="c-row"><span class="c-label">机会</span>Mazzer 讨论量较低，Geimori 可关注其用户群体。</div><div class="c-note">这是 Reddit 讨论份额，不是市场份额。</div><div class="c-links"></div></article>
+<article class="comp-card"><div class="comp-head"><h3>kinu</h3><span class="pill pill-sent">正面</span><span class="pill">2 提及</span></div><div class="c-row"><span class="c-label">好评</span>Kinu M47 受到好评，如 &#x27;two small findings from my espresso making&#x27; 中用户分享积极体验。</div><div class="c-row"><span class="c-label">槽点</span>未发现明显抱怨。</div><div class="c-row"><span class="c-label">机会</span>Kinu 用户忠诚度高，Geimori 可关注其产品特点。</div><div class="c-note">这是 Reddit 讨论份额，不是市场份额。</div><div class="c-links"><a href="https://www.reddit.com/r/espresso/comments/1wt8n3k/two_small_findings_from_my_espresso_making" target="_blank" rel="noopener noreferrer">高互动帖 ↗</a> </div></article>
+<article class="comp-card"><div class="comp-head"><h3>weber</h3><span class="pill pill-sent">中性</span><span class="pill">1 提及</span></div><div class="c-row"><span class="c-label">好评</span>未发现明显赞扬。</div><div class="c-row"><span class="c-label">槽点</span>未发现明显抱怨。</div><div class="c-row"><span class="c-label">机会</span>Weber 讨论量极低，Geimori 可忽略。</div><div class="c-note">这是 Reddit 讨论份额，不是市场份额。</div><div class="c-links"></div></article>
+<article class="comp-card"><div class="comp-head"><h3>pietro</h3><span class="pill pill-sent">中性</span><span class="pill">2 提及</span></div><div class="c-row"><span class="c-label">好评</span>未发现明显赞扬。</div><div class="c-row"><span class="c-label">槽点</span>未发现明显抱怨。</div><div class="c-row"><span class="c-label">机会</span>Pietro 讨论量较低，Geimori 可关注其用户群体。</div><div class="c-note">这是 Reddit 讨论份额，不是市场份额。</div><div class="c-links"></div></article>
+  </section>
+
+  <section class="panel" aria-label="品牌声音">
+    <h2>Geimori Voice</h2>
+    <div class="gv-head"><h3>Geimori / MyWirsh / GU 系列</h3><span class="pill pill-sent">中性</span><span class="pill">1 提及</span></div><p class="gv-action"><span class="c-label">建议回应</span>Geimori 本周仅被提及 1 次，样本极小，无法判断情绪。建议主动参与相关讨论，提供有价值的信息，提升品牌曝光度。</p>
+  </section>
+
+  <section class="panel" aria-label="客户优先级">
+    <h2>Customer Priorities</h2>
+    <article class="pri-item" style="--pc: var(--status-spike)"><div class="pri-head"><span class="pri-tag">结构性优先级</span><h3>espresso</h3></div><p>espresso 是本周讨论量最高的主题，且 avg_30d 也较高，表明这是用户持续关注的核心需求。</p></article>
+<article class="pri-item" style="--pc: var(--status-spike)"><div class="pri-head"><span class="pri-tag">结构性优先级</span><h3>pourover</h3></div><p>pourover 讨论量紧随其后，同样是用户长期关注的重点。</p></article>
+<article class="pri-item" style="--pc: var(--status-spike)"><div class="pri-head"><span class="pri-tag">结构性优先级</span><h3>workflow</h3></div><p>workflow 讨论量高，用户频繁寻求优化日常流程的建议，是结构性需求。</p></article>
+<article class="pri-item" style="--pc: var(--status-spike)"><div class="pri-head"><span class="pri-tag">结构性优先级</span><h3>price_value</h3></div><p>价格与价值是用户决策的重要因素，许多帖子在预算内寻求推荐。</p></article>
+<article class="pri-item" style="--pc: var(--status-emerging)"><div class="pri-head"><span class="pri-tag">新兴趋势</span><h3>grind_consistency</h3></div><p>研磨一致性讨论量显著上升，用户遇到萃取不稳定问题，是新兴趋势。</p></article>
+<article class="pri-item" style="--pc: var(--status-emerging)"><div class="pri-head"><span class="pri-tag">新兴趋势</span><h3>portability</h3></div><p>便携性需求增加，用户寻找旅行或移动使用的设备。</p></article>
+<article class="pri-item" style="--pc: var(--status-rising)"><div class="pri-head"><span class="pri-tag">短期脉冲</span><h3>burr</h3></div><p>刀盘讨论量较高，但可能受特定帖子驱动，需观察是否持续。</p></article>
+<article class="pri-item" style="--pc: var(--status-stable)"><div class="pri-head"><span class="pri-tag">弱信号</span><h3>noise</h3></div><p>噪音问题讨论量较低，样本不足，暂视为弱信号。</p></article>
+<article class="pri-item" style="--pc: var(--status-stable)"><div class="pri-head"><span class="pri-tag">弱信号</span><h3>retention</h3></div><p>残留粉量讨论量极小，样本不足，暂视为弱信号。</p></article>
+<article class="pri-item" style="--pc: var(--status-stable)"><div class="pri-head"><span class="pri-tag">弱信号</span><h3>static</h3></div><p>静电问题讨论量极小，样本不足，暂视为弱信号。</p></article>
+  </section>
+
+  <section class="panel" aria-label="下周行动">
+    <h2>Next Week Actions</h2>
+    <article class="act-item"><div class="act-head"><span class="pill pill-cat">Blog_SEO</span><h3>创建针对研磨一致性和工作流优化的内容，如博客文章或视频，展示 Geimori 磨豆机如何解决用户痛点。</h3></div><p class="act-ev">grind_consistency (mentions=21, avg_30d=0.6, trend=spike) 和 workflow (mentions=71, avg_30d=1.9667, trend=spike) 的高讨论度。</p><p class="act-why">满足用户核心需求，提升品牌相关性和搜索可见性。</p><div class="act-badges"><span class="pill">置信 HIGH</span><span class="pill">紧急 MEDIUM</span></div></article>
+<article class="act-item"><div class="act-head"><span class="pill pill-cat">Community</span><h3>在 Reddit 相关帖子中主动提供帮助，解答用户关于研磨和萃取的问题，并适度提及 Geimori 产品。</h3></div><p class="act-ev">多个帖子如 &#x27;Consecutive shots never the same&#x27; 和 &#x27;Post Mortem; too many fines/inconsistent grind?&#x27; 中用户遇到问题。</p><p class="act-why">通过社区互动建立品牌信任和曝光。</p><div class="act-badges"><span class="pill">置信 MEDIUM</span><span class="pill">紧急 MEDIUM</span></div></article>
+<article class="act-item"><div class="act-head"><span class="pill pill-cat">Ads</span><h3>针对便携性需求，制作内容展示 Geimori 磨豆机在旅行或移动场景中的适用性。</h3></div><p class="act-ev">portability (mentions=28, avg_30d=0.8667, trend=spike) 和多个旅行相关帖子。</p><p class="act-why">抓住新兴趋势，吸引特定用户群体。</p><div class="act-badges"><span class="pill">置信 MEDIUM</span><span class="pill">紧急 LOW</span></div></article>
+<article class="act-item"><div class="act-head"><span class="pill pill-cat">Research</span><h3>监控竞品如 Kingrinder 的负面讨论，准备应对策略，强调 Geimori 的耐用性和客户服务。</h3></div><p class="act-ev">Kingrinder 负面帖子 &#x27;We must stop recommending Kingrinder products&#x27; 和 durability (mentions=33, avg_30d=1.1, trend=spike)。</p><p class="act-why">利用竞品弱点，差异化自身品牌。</p><div class="act-badges"><span class="pill">置信 MEDIUM</span><span class="pill">紧急 MEDIUM</span></div></article>
+<article class="act-item"><div class="act-head"><span class="pill pill-cat">Product</span><h3>分析用户对价格价值的讨论，考虑推出针对预算敏感用户的产品或促销活动。</h3></div><p class="act-ev">price_value (mentions=55, avg_30d=1.6667, trend=spike) 和多个预算相关帖子。</p><p class="act-why">价格是用户决策关键因素，优化定价策略可提升竞争力。</p><div class="act-badges"><span class="pill">置信 MEDIUM</span><span class="pill">紧急 LOW</span></div></article>
+  </section>
+
+  <footer class="foot">
+    <div class="foot-meta">生成时间 2026-09-30 16:18:24 · Batch #4 · 窗口 2026-09-23T08:00 → 2026-09-30T08:17</div><div class="foot-source">数据来源：Reddit 公开社区帖子，由阿里云侧抓取与 LLM 分析生成；原帖链接均指向 reddit.com 真实来源。Reddit 讨论份额 ≠ 市场份额。</div>
+  </footer>
+</div>
+</body>
+</html>
