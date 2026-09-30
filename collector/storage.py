@@ -140,17 +140,22 @@ def _bind_row(row: Dict[str, Any], columns) -> List[Any]:
 
 
 def _migrate_created_utc(conn) -> None:
-    """把旧库中存成 epoch 整数的 created_utc 迁移为 ISO 时间（幂等）。
+    """把旧库中存成 epoch 数字（integer/real/text）的 created_utc 迁移为 ISO 时间（幂等）。
 
     早期版本 RSS raw_json 的 created_utc 直接存 epoch int，TIMESTAMP 列
     在 PARSE_DECLTYPES 下会触发 convert_timestamp 的 split 报错
     （not enough values to unpack）。datetime(x, 'unixepoch') 生成
-    "YYYY-MM-DD HH:MM:SS"（UTC），幂等：已迁移的行 typeof 不再是 integer。
+    "YYYY-MM-DD HH:MM:SS"（UTC），幂等：已迁移的行带空格/连字符不再匹配。
+    条件覆盖 integer/real/text 三种存储类型，且只处理纯数字（无空格无连字符），
+    避免把已迁移的 ISO 文本或 NULL 再更新。
     """
     for table in ("reddit_posts", "reddit_comments"):
         cur = conn.execute(
             f"UPDATE {table} SET created_utc = datetime(created_utc, 'unixepoch')"
-            " WHERE typeof(created_utc) = 'integer'"
+            " WHERE created_utc IS NOT NULL"
+            "   AND created_utc GLOB '[0-9]*'"
+            "   AND created_utc NOT LIKE '% %'"
+            "   AND created_utc NOT LIKE '%-%'"
         )
         if cur.rowcount:
             logger.info("Migrated %d created_utc rows in %s", cur.rowcount, table)

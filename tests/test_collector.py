@@ -259,15 +259,26 @@ def test_migrate_created_utc_old_epoch_rows(tmp_path):
         " VALUES ('t3_old1', 'espresso', 'Old', 'Body', 1790755200, 0,"
         "         NULL, 0, '/r/espresso/comments/old1/x', NULL, '{}')"
     )
+    # 同时插入 TEXT 类型的 epoch（部分旧库可能以文本存储）
+    conn.execute(
+        "INSERT INTO reddit_posts"
+        " (post_id, subreddit, title, selftext, created_utc, score,"
+        "  upvote_ratio, num_comments, permalink, flair, raw_json)"
+        " VALUES ('t3_old2', 'espresso', 'Old2', 'Body', '1790755201', 0,"
+        "         NULL, 0, '/r/espresso/comments/old2/x', NULL, '{}')"
+    )
     conn.commit()
     # 重新 init（实际部署时旧库会走 init_schema 迁移）
     storage.init_schema(conn, "sql/schema.sql")
 
     import datetime as dt
 
-    val = conn.execute(
+    v1 = conn.execute(
         "SELECT created_utc FROM reddit_posts WHERE post_id = 't3_old1'"
     ).fetchone()[0]
-    assert isinstance(val, dt.datetime)
-    assert val == dt.datetime(2026, 9, 30, 8, 0)
+    v2 = conn.execute(
+        "SELECT created_utc FROM reddit_posts WHERE post_id = 't3_old2'"
+    ).fetchone()[0]
+    assert isinstance(v1, dt.datetime) and v1 == dt.datetime(2026, 9, 30, 8, 0)
+    assert isinstance(v2, dt.datetime) and v2 == dt.datetime(2026, 9, 30, 8, 0, 1)
     conn.close()

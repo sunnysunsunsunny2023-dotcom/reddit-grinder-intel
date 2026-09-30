@@ -92,8 +92,21 @@ jobs:
               || echo "collector failed (大概率 Reddit 限速)；继续验证 API 环节"
             echo "==> 数据库行数"
             sudo -u reddit-intel ./.venv/bin/python deploy/verify_install.py
-            echo "==> API analysis-batch（不跑 LLM 则确定性统计可返回；ANALYZER 配置后返回完整）"
+            echo "==> created_utc 类型检查 + 强制迁移（convert_timestamp 500 根因防护）"
             set -a; source /opt/reddit-intel/.env; set +a
+            sudo -u reddit-intel ./.venv/bin/python -c "
+import os, sqlite3
+from collector.storage import _migrate_created_utc
+db = os.environ.get('DATABASE_PATH', '/opt/reddit-intel/data/reddit_intel.db')
+conn = sqlite3.connect(db)
+before = conn.execute(\"SELECT typeof(created_utc), COUNT(*) FROM reddit_posts GROUP BY typeof(created_utc)\").fetchall()
+print('created_utc before:', before)
+_migrate_created_utc(conn)
+after = conn.execute(\"SELECT typeof(created_utc), substr(created_utc,1,19), COUNT(*) FROM reddit_posts GROUP BY typeof(created_utc), substr(created_utc,1,19)\").fetchall()
+print('created_utc after:', after)
+conn.close()
+" || echo "migrate step failed; 继续验证 API"
+            echo "==> API analysis-batch（不跑 LLM 则确定性统计可返回；ANALYZER 配置后返回完整）"
             echo "REDDIT_API_KEY len: ${#REDDIT_API_KEY}"
             curl -s --max-time 60 -H "X-API-Key: $REDDIT_API_KEY" \
               -w "\nHTTP_STATUS:%{http_code}\n" \
