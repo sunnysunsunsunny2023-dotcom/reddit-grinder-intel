@@ -6,6 +6,13 @@
 """
 import os
 import sqlite3
+import sys
+
+# 脚本位于 deploy/ 下，运行时 python 会把脚本目录加入 sys.path，
+# 需要显式把仓库根目录（/opt/reddit-intel）加入才能 import collector.*
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
 
 from collector.storage import _migrate_created_utc
 
