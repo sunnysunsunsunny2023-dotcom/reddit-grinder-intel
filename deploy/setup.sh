@@ -43,7 +43,14 @@ echo "--> 使用包管理器: $PM"
 MEM_TOTAL_MB=$(free -m | awk '/Mem:/{print $2}')
 SWAP_TOTAL_MB=$(free -m | awk '/Swap:/{print $2}')
 if [ "${MEM_TOTAL_MB:-0}" -lt 1024 ]; then
-  echo "==> 低内存服务器（${MEM_TOTAL_MB}MB），扩展 swap 到 2G"
+  echo "==> 低内存服务器（${MEM_TOTAL_MB}MB），调高 swappiness 利用 swap + 扩展 swap 到 2G"
+  # 根因修复：swappiness=0 时内核不主动换出，物理内存耗尽即 global_oom，swap 形同虚设
+  SWAPPINESS=$(cat /proc/sys/vm/swappiness 2>/dev/null || echo unknown)
+  if [ "$SWAPPINESS" != "unknown" ] && [ "$SWAPPINESS" -lt 20 ]; then
+    echo 60 > /proc/sys/vm/swappiness 2>/dev/null || true
+    echo "vm.swappiness = 60" > /etc/sysctl.d/99-reddit-swap.conf 2>/dev/null || true
+    echo "--> swappiness: $SWAPPINESS -> $(cat /proc/sys/vm/swappiness 2>/dev/null || echo unknown)"
+  fi
   if [ "${SWAP_TOTAL_MB:-0}" -lt 2048 ]; then
     if [ ! -f /swapfile2 ]; then
       fallocate -l 2G /swapfile2 2>/dev/null || dd if=/dev/zero of=/swapfile2 bs=1M count=2048
