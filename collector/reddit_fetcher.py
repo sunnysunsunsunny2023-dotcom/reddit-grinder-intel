@@ -162,10 +162,16 @@ class RedditFetcher:
                 subreddit,
                 json_exc,
             )
+            # 403 后稍作停顿再打 RSS：同一秒连续请求易被 Reddit 限速(429)
+            if self.sleep_seconds > 0:
+                time.sleep(max(self.sleep_seconds, 3))
             try:
                 return self._fetch_rss(subreddit, limit=limit)
-            except RedditFetchError:
-                raise json_exc from None
+            except RedditFetchError as rss_exc:
+                raise RedditFetchError(
+                    f"JSON 403 and RSS fallback failed for r/{subreddit}: "
+                    f"json={json_exc}; rss={rss_exc}"
+                ) from None
 
     def _fetch_json(
         self, subreddit: str, limit: int = 100, after: Optional[str] = None
