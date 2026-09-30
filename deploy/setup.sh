@@ -20,7 +20,10 @@ else
   echo "--> python3: none"
 fi
 echo "--> 内存: $(free -h 2>/dev/null | awk '/Mem:/{print $2" 总, "$7" 可用"}' || echo unknown)"
+free -h 2>/dev/null | grep -E "Mem|Swap" | sed 's/^/    /' || true
 echo "--> CPU: $(nproc) 核"
+echo "--> 磁盘: $(df -h / 2>/dev/null | awk 'NR==2{print $2" 总, "$4" 可用"}' || echo unknown)"
+echo "--> 公网IP: $(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || echo unknown)"
 echo "--> 内存占用 Top5:"
 ps aux --sort=-%mem 2>/dev/null | head -6 | awk '{printf "    %s %s%% %sMB %s\n", $1, $4, int($6/1024), substr($0, index($0,$11), 60)}' || true
 
