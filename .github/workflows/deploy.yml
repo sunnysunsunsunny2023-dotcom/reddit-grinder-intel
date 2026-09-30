@@ -93,5 +93,7 @@ jobs:
             sudo -u reddit-intel ./.venv/bin/python deploy/verify_install.py
             echo "==> API analysis-batch（不跑 LLM 则确定性统计可返回；ANALYZER 配置后返回完整）"
             set -a; source /opt/reddit-intel/.env; set +a
-            curl -sf --max-time 60 -H "X-API-Key: $REDDIT_API_KEY" \
-              "http://127.0.0.1:8086/api/reddit/analysis-batch?report_type=daily&hours=24" | head -c 600 || echo "(analysis-batch 需 ANALYZER_API_KEY 或帖子数据)"
+            echo "REDDIT_API_KEY len: ${#REDDIT_API_KEY}"
+            curl -s --max-time 60 -H "X-API-Key: $REDDIT_API_KEY" \
+              -w "\nHTTP_STATUS:%{http_code}\n" \
+              "http://127.0.0.1:8086/api/reddit/analysis-batch?report_type=daily&hours=24" | head -c 800
