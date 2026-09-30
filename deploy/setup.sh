@@ -14,12 +14,33 @@ echo "==> [0/6] 系统探测"
 cat /etc/os-release 2>/dev/null | head -4 || true
 echo "--> 包管理器: $(command -v apt-get dnf yum apk 2>/dev/null || echo none)"
 echo "--> psql: $(command -v psql || echo none)"
+echo "--> python3: $(command -v python3 || echo none) $($(command -v python3 >/dev/null 2>&1 && python3 --version || true))"
+
+# 包管理分支
+if command -v apt-get >/dev/null 2>&1; then
+  PM="apt"
+elif command -v dnf >/dev/null 2>&1; then
+  PM="dnf"
+elif command -v yum >/dev/null 2>&1; then
+  PM="yum"
+else
+  echo "无法识别的包管理器，部署中止"; exit 1
+fi
+echo "--> 使用包管理器: $PM"
 
 echo "==> [1/6] 安装 PostgreSQL（如未安装）"
 if ! command -v psql >/dev/null 2>&1; then
-  export DEBIAN_FRONTEND=noninteractive
-  apt-get update -y
-  apt-get install -y postgresql postgresql-contrib
+  if [ "$PM" = "apt" ]; then
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -y
+    apt-get install -y postgresql postgresql-contrib
+  else
+    dnf install -y postgresql-server postgresql postgresql-contrib
+    # RHEL 系需要显式 initdb
+    if [ ! -f /var/lib/pgsql/data/PG_VERSION ]; then
+      postgresql-setup --initdb || su - postgres -c "/usr/bin/initdb -D /var/lib/pgsql/data" || true
+    fi
+  fi
 fi
 systemctl enable --now postgresql || true
 
@@ -68,11 +89,29 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$APP_DIR/sql/schema.sql" >/dev/null
 echo "==> schema.sql applied"
 
 echo "==> [4/6] Python venv + 依赖（阿里云 PyPI 镜像）"
-if ! python3 -m venv --help >/dev/null 2>&1; then
-  apt-get update -qq && apt-get install -y -qq python3-venv
+PY_BIN="${PY_BIN:-python3}"
+# 版本太老的 python3 无法装 pydantic v2 / 新版 fastapi，尝试安装更高版本
+PY_VER=$("$PY_BIN" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+echo "--> 使用 python: $PY_BIN ($PY_VER)"
+if [ "$PM" != "apt" ] && { [ "$PY_VER" = "3.6" ] || [ "$PY_VER" = "3.7" ]; }; then
+  if command -v python3.11 >/dev/null 2>&1; then
+    PY_BIN=python3.11
+  else
+    dnf install -y python3.11 || true
+  fi
+  if command -v python3.11 >/dev/null 2>&1; then PY_BIN=python3.11; fi
+  PY_VER=$("$PY_BIN" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+  echo "--> 升级后使用 python: $PY_BIN ($PY_VER)"
+fi
+if ! "$PY_BIN" -m venv --help >/dev/null 2>&1; then
+  if [ "$PM" = "apt" ]; then
+    apt-get update -qq && apt-get install -y -qq python3-venv
+  else
+    dnf install -y python3-virtualenv python3-pip || true
+  fi
 fi
 if [ ! -d "$APP_DIR/.venv" ]; then
-  python3 -m venv "$APP_DIR/.venv"
+  "$PY_BIN" -m venv "$APP_DIR/.venv"
 fi
 if [ ! -x "$APP_DIR/.venv/bin/pip" ]; then
   "$APP_DIR/.venv/bin/python" -m ensurepip --upgrade --default-pip 2>/dev/null || true
