@@ -14,6 +14,7 @@ LLM 输出纪律（spec 9）：
 from __future__ import annotations
 
 import datetime as dt
+import json as _json
 import logging
 import os
 from typing import Any, Dict, List, Optional
@@ -398,7 +399,7 @@ def analyze_batch(
             report_type,
             context.get("period_start"),
             context.get("period_end"),
-            result,
+            _json.dumps(result, ensure_ascii=False),
         ),
     )
     cur.execute(
