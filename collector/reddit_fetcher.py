@@ -239,9 +239,6 @@ def build_fetcher_from_env() -> RedditFetcher:
     """从环境变量构建 fetcher（供 scheduler 使用）。"""
     import os
 
-    ua = os.environ.get(
-        "REDDIT_USER_AGENT",
-        DEFAULT_USER_AGENT,
-    )
+    ua = os.environ.get("REDDIT_USER_AGENT", "").strip() or DEFAULT_USER_AGENT
     sleep_s = float(os.environ.get("REDDIT_SLEEP_SECONDS", "2.0"))
     return RedditFetcher(user_agent=ua, sleep_seconds=sleep_s)

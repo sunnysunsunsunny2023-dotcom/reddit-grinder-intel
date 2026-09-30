@@ -46,7 +46,7 @@ jobs:
             ANALYZER_API_BASE=${{ secrets.ANALYZER_API_BASE }}
             ANALYZER_API_KEY=${{ secrets.ANALYZER_API_KEY }}
             ANALYZER_MODEL=${{ secrets.ANALYZER_MODEL }}
-            REDDIT_USER_AGENT=${{ secrets.REDDIT_USER_AGENT }}
+            REDDIT_USER_AGENT="linux:reddit-grinder-intel:v0.1.0 (by /u/reddit_grinder_intel; internal monitoring)"
             REDDIT_SLEEP_SECONDS=${{ secrets.REDDIT_SLEEP_SECONDS }}
             ENVEOF
             chmod 600 /opt/reddit-intel/.env
