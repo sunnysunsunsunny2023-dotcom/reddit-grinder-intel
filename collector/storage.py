@@ -80,16 +80,18 @@ def init_schema(conn, schema_sql_path: str) -> None:
 def start_fetch_run(
     conn, subreddit: str, started_at: Optional[str] = None
 ) -> int:
-    """插入 fetch_runs 记录并返回 run_id。"""
+    """插入 fetch_runs 记录并返回 run_id。
+
+    兼容老版本 SQLite（无 RETURNING，3.35 以下）：用 lastrowid。
+    """
     cur = conn.execute(
         """
         INSERT INTO fetch_runs (started_at, subreddit, status)
         VALUES (COALESCE(?, CURRENT_TIMESTAMP), ?, 'running')
-        RETURNING run_id
         """,
         (started_at, subreddit),
     )
-    run_id = cur.fetchone()[0]
+    run_id = cur.lastrowid
     conn.commit()
     return run_id
 

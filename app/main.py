@@ -97,15 +97,13 @@ def _find_or_create_batch(
         VALUES (?, ?, ?, ?, ?, 'pending')
         ON CONFLICT (report_type, period_start, analysis_version)
         DO NOTHING
-        RETURNING batch_id
         """,
         (report_type, period_start, period_end, post_count, analysis_version),
     )
-    row = cur.fetchone()
-    if row:
+    if cur.rowcount == 1:
         conn.commit()
         return {
-            "batch_id": row[0],
+            "batch_id": cur.lastrowid,
             "report_type": report_type,
             "period_start": period_start,
             "period_end": period_end,
