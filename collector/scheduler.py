@@ -44,8 +44,10 @@ def run_once(
     schema_sql_path: str = "sql/schema.sql",
 ) -> dict:
     """执行一次完整抓取流程，返回汇总统计。"""
-    database_url = os.environ["DATABASE_URL"]
-    conn = connect(database_url)
+    database_path = os.environ.get(
+        "DATABASE_PATH", "/opt/reddit-intel/data/reddit_intel.db"
+    )
+    conn = connect(database_path)
     try:
         init_schema(conn, schema_sql_path)
         fetcher = build_fetcher_from_env()

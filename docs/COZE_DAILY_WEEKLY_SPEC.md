@@ -7,6 +7,9 @@
 > **ADR-001（2026-09-29）：LLM 分析由阿里云调用 DeepSeek。**
 > 原 spec 中 Coze 负责的 LLM 语义分析全部移至阿里云侧（与 youtube-kol-monitor 同模式，`ANALYZER_*` 配置走 GitHub Secrets，不在代码库落明文）；Coze 只保留 HTML 渲染与飞书推送。所有“LLM 输出纪律”（第 9 节）对阿里云侧的 DeepSeek 分析模块同样适用。
 
+> **ADR-002（2026-09-30）：存储由 PostgreSQL 改为 SQLite。**
+> 原因：目标服务器为 409Mi 物理内存的生产机（跑 wirsh-ads google_ads proxy），dnf 安装 PostgreSQL 连续 global OOM（已调 swappiness=60 + swap 3G 仍失败）；本项目单机、低频（2 次/天抓取 + 1 次/天分析），SQLite 零运维、无守护进程、单文件可备份，完全满足数据量级。改法：`sqlite3`（PARSE_DECLTYPES/WAL/foreign_keys）、占位符 `?`、`CURRENT_TIMESTAMP`、`excluded`、`INTEGER PRIMARY KEY AUTOINCREMENT`、`TEXT` 代替 JSONB；环境变量 `DATABASE_URL` → `DATABASE_PATH`（/opt/reddit-intel/data/reddit_intel.db）；GitHub Secret `REDDIT_DATABASE_URL` 不再需要，部署链路（setup.sh/deploy.yml/verify_install.py）已同步。
+
 ## 1. 系统边界
 
 ### 阿里云负责
@@ -14,7 +17,7 @@
 - Reddit 数据抓取
 - 帖子/评论标准化
 - 去重
-- PostgreSQL 持久化
+- SQLite 持久化（ADR-002，单机低频零运维）
 - fetch 状态
 - analysis batch 状态
 - 24h / 7d / 30d 时间窗口聚合
@@ -39,7 +42,7 @@
 
 ---
 
-## 2. 数据层：PostgreSQL 为 Single Source of Truth
+## 2. 数据层：SQLite 为 Single Source of Truth（ADR-002）
 
 建议至少包含：
 
@@ -57,7 +60,7 @@ upvote_ratio
 num_comments
 permalink
 flair
-raw_json JSONB
+raw_json TEXT
 ```
 
 ### reddit_comments
@@ -69,7 +72,7 @@ body
 score
 created_utc
 depth
-raw_json JSONB
+raw_json TEXT
 ```
 
 ### fetch_runs
@@ -587,7 +590,7 @@ schemas/weekly_intelligence.schema.json
 
 # 12. 第一阶段实施顺序
 
-1. PostgreSQL schema
+1. SQLite schema（sql/schema.sql，ADR-002）
 2. Collector 数据入库
 3. 去重 / fetch_runs
 4. 24h / 7d / 30d 聚合
@@ -607,7 +610,7 @@ schemas/weekly_intelligence.schema.json
 
 只有满足以下条件才能认为上线：
 
-- 数据进入 PostgreSQL，而不是依赖本地 JSON state
+- 数据进入 SQLite（ADR-002），而不是依赖本地 JSON state
 - 同一 post 不重复入库
 - 同一 analysis_version 不重复分析
 - Daily/Weekly 使用独立 schema

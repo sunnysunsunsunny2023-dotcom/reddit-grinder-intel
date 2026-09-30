@@ -3,7 +3,7 @@
 > 每天从 Reddit **r/pourover** 与 **r/espresso** 拉取最新帖子，分析顾客对**磨豆机**的需求、反馈与趋势，同时监测品牌 **Geimori** 的产品口碑，产出可执行洞察（需求洞察 / 营销切入点 / 内容选题 / 产品改进方向）。
 
 > [!IMPORTANT]
-> **2026-09-29 架构更新：**后续实现以 [docs/COZE_DAILY_WEEKLY_SPEC.md](docs/COZE_DAILY_WEEKLY_SPEC.md) 为准。阿里云负责抓取、PostgreSQL 数据存储、去重、状态、统计和趋势计算；Coze 只负责 LLM 分析、Daily/Weekly HTML 报告与飞书推送。该规范优先于下方仍待重构的 JSONL / Coze state file 旧描述。
+> **架构（2026-09-30 更新）：**后续实现以 [docs/COZE_DAILY_WEEKLY_SPEC.md](docs/COZE_DAILY_WEEKLY_SPEC.md) 为准。阿里云负责抓取、**SQLite 数据存储（ADR-002）**、去重、状态、统计、趋势计算与 **LLM 分析（ADR-001：DeepSeek 由阿里云调用）**；Coze 只负责 Daily/Weekly HTML 报告与飞书推送。该规范优先于下方仍待重构的 JSONL / Coze state file 旧描述。
 
 ---
 
@@ -183,7 +183,7 @@ top_comments     # Top3 评论（可选）
 | Secret | 说明 |
 |--------|------|
 | `SERVER_IP` / `SERVER_USER` / `SSH_PRIVATE_KEY` / `DEPLOY_PAT` | 阿里云 SSH + 部署 PAT（同 Wirsh/youtube-kol 仓库） |
-| `REDDIT_DATABASE_URL` | PostgreSQL 连接串，如 `postgresql://reddit_intel:xxx@127.0.0.1:5432/reddit_intel` |
+| `DATABASE_PATH` | SQLite 数据库文件路径（ADR-002），默认 `/opt/reddit-intel/data/reddit_intel.db`，服务器本地固定路径，无需 Secret |
 | `REDDIT_API_KEY` | 8086 API 鉴权（`X-API-Key`，同 8080/8081 模式） |
 | `ANALYZER_API_KEY` | DeepSeek API Key（ADR-001，阿里云侧调用） |
 | `ANALYZER_API_BASE` / `ANALYZER_MODEL` | 默认 `https://api.deepseek.com` / `deepseek-v4-pro` |

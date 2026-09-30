@@ -45,15 +45,14 @@ def collect_existing_post_ids(conn, subreddit: str) -> Set[str]:
     """从数据库读取已知 post_id 集合（按 subreddit 限定可减少内存）。
 
     Args:
-        conn: psycopg2 连接。
+        conn: sqlite3 连接。
         subreddit: subreddit 名。
 
     Returns:
         已知 post_id 集合。
     """
-    with conn.cursor() as cur:
-        cur.execute(
-            "SELECT post_id FROM reddit_posts WHERE subreddit = %s",
-            (subreddit,),
-        )
-        return {str(row[0]) for row in cur.fetchall()}
+    cur = conn.execute(
+        "SELECT post_id FROM reddit_posts WHERE subreddit = ?",
+        (subreddit,),
+    )
+    return {str(row[0]) for row in cur.fetchall()}

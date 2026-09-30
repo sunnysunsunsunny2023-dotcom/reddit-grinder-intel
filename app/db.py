@@ -1,45 +1,51 @@
-"""数据库连接池（psycopg2 SimpleConnectionPool）。
+"""数据库访问封装（SQLite，ADR-002）。
 
-DATABASE_URL 从环境变量读取（部署时写入 .env，走 GitHub Secrets）。
+DATABASE_PATH 从环境变量读取（部署时写入 .env，走 GitHub Secrets）。
+SQLite 单机低频场景不需要连接池：get_conn 每次新建连接，put_conn 关闭。
 """
 from __future__ import annotations
 
+import datetime as dt
 import logging
 import os
+import sqlite3
 from typing import Optional
-
-import psycopg2
-import psycopg2.pool
 
 logger = logging.getLogger(__name__)
 
-_pool: Optional[psycopg2.pool.SimpleConnectionPool] = None
+# 统一 datetime 序列化：tz-aware 转 naive UTC 存储，避免
+# PARSE_DECLTYPES convert_timestamp 遇到时区字符串报错（同 collector/storage.py）。
 
 
-def get_database_url() -> str:
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        raise RuntimeError("DATABASE_URL is not set")
-    return url
+def _adapt_datetime_utc(value: dt.datetime) -> str:
+    if value.tzinfo is not None:
+        value = value.astimezone(dt.timezone.utc).replace(tzinfo=None)
+    return value.isoformat(sep=" ", timespec="microseconds")
 
 
-def get_pool(minconn: int = 1, maxconn: int = 10) -> psycopg2.pool.SimpleConnectionPool:
-    global _pool
-    if _pool is None:
-        _pool = psycopg2.pool.SimpleConnectionPool(
-            minconn, maxconn, dsn=get_database_url()
-        )
-        logger.info("Database pool created (min=%d max=%d)", minconn, maxconn)
-    return _pool
+sqlite3.register_adapter(dt.datetime, _adapt_datetime_utc)
 
 
-def get_conn():
-    """获取一个连接（调用方负责 close/归还）。"""
-    return get_pool().getconn()
+def get_database_path() -> str:
+    path = os.environ.get("DATABASE_PATH")
+    if not path:
+        raise RuntimeError("DATABASE_PATH is not set")
+    return path
+
+
+def get_conn() -> sqlite3.Connection:
+    """获取一个新连接（调用方负责 close/归还）。"""
+    path = get_database_path()
+    conn = sqlite3.connect(
+        path,
+        detect_types=sqlite3.PARSE_DECLTYPES,
+        check_same_thread=False,
+        timeout=30,
+    )
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA journal_mode = WAL")
+    return conn
 
 
 def put_conn(conn) -> None:
-    if _pool is not None:
-        _pool.putconn(conn)
-    else:
-        conn.close()
+    conn.close()

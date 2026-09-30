@@ -70,85 +70,85 @@ def _find_or_create_batch(
     post_count: int,
 ) -> Dict[str, Any]:
     """按 (report_type, period_start, analysis_version) 幂等查找或创建批次。"""
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT batch_id, report_type, period_start, period_end,
-                   post_count, analysis_version, status, created_at, completed_at
-              FROM analysis_batches
-             WHERE report_type = %s AND period_start = %s AND analysis_version = %s
-            """,
-            (report_type, period_start, analysis_version),
-        )
-        row = cur.fetchone()
-        if row:
-            cols = (
-                "batch_id", "report_type", "period_start", "period_end",
-                "post_count", "analysis_version", "status", "created_at",
-                "completed_at",
-            )
-            return dict(zip(cols, row))
-
-        cur.execute(
-            """
-            INSERT INTO analysis_batches
-                (report_type, period_start, period_end, post_count,
-                 analysis_version, status)
-            VALUES (%s, %s, %s, %s, %s, 'pending')
-            ON CONFLICT (report_type, period_start, analysis_version)
-            DO NOTHING
-            RETURNING batch_id
-            """,
-            (report_type, period_start, period_end, post_count, analysis_version),
-        )
-        row = cur.fetchone()
-        if row:
-            conn.commit()
-            return {
-                "batch_id": row[0],
-                "report_type": report_type,
-                "period_start": period_start,
-                "period_end": period_end,
-                "post_count": post_count,
-                "analysis_version": analysis_version,
-                "status": "pending",
-                "created_at": None,
-                "completed_at": None,
-            }
-        # 并发插入冲突：重查
-        conn.rollback()
-        cur.execute(
-            """
-            SELECT batch_id, report_type, period_start, period_end,
-                   post_count, analysis_version, status, created_at, completed_at
-              FROM analysis_batches
-             WHERE report_type = %s AND period_start = %s AND analysis_version = %s
-            """,
-            (report_type, period_start, analysis_version),
-        )
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT batch_id, report_type, period_start, period_end,
+               post_count, analysis_version, status, created_at, completed_at
+          FROM analysis_batches
+         WHERE report_type = ? AND period_start = ? AND analysis_version = ?
+        """,
+        (report_type, period_start, analysis_version),
+    )
+    row = cur.fetchone()
+    if row:
         cols = (
             "batch_id", "report_type", "period_start", "period_end",
-            "post_count", "analysis_version", "status", "created_at", "completed_at",
+            "post_count", "analysis_version", "status", "created_at",
+            "completed_at",
         )
-        return dict(zip(cols, cur.fetchone()))
+        return dict(zip(cols, row))
+
+    cur.execute(
+        """
+        INSERT INTO analysis_batches
+            (report_type, period_start, period_end, post_count,
+             analysis_version, status)
+        VALUES (?, ?, ?, ?, ?, 'pending')
+        ON CONFLICT (report_type, period_start, analysis_version)
+        DO NOTHING
+        RETURNING batch_id
+        """,
+        (report_type, period_start, period_end, post_count, analysis_version),
+    )
+    row = cur.fetchone()
+    if row:
+        conn.commit()
+        return {
+            "batch_id": row[0],
+            "report_type": report_type,
+            "period_start": period_start,
+            "period_end": period_end,
+            "post_count": post_count,
+            "analysis_version": analysis_version,
+            "status": "pending",
+            "created_at": None,
+            "completed_at": None,
+        }
+    # 并发插入冲突：重查
+    conn.rollback()
+    cur.execute(
+        """
+        SELECT batch_id, report_type, period_start, period_end,
+               post_count, analysis_version, status, created_at, completed_at
+          FROM analysis_batches
+         WHERE report_type = ? AND period_start = ? AND analysis_version = ?
+        """,
+        (report_type, period_start, analysis_version),
+    )
+    cols = (
+        "batch_id", "report_type", "period_start", "period_end",
+        "post_count", "analysis_version", "status", "created_at", "completed_at",
+    )
+    return dict(zip(cols, cur.fetchone()))
 
 
 def _get_analysis_result(conn, batch_id: int) -> Optional[Dict[str, Any]]:
-    with conn.cursor() as cur:
-        cur.execute(
-            "SELECT result_json FROM analysis_results WHERE batch_id = %s",
-            (batch_id,),
-        )
-        row = cur.fetchone()
-        return row[0] if row else None
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT result_json FROM analysis_results WHERE batch_id = ?",
+        (batch_id,),
+    )
+    row = cur.fetchone()
+    return row[0] if row else None
 
 
 def _mark_batch_failed(conn, batch_id: int, error: str) -> None:
-    with conn.cursor() as cur:
-        cur.execute(
-            "UPDATE analysis_batches SET status='failed' WHERE batch_id=%s",
-            (batch_id,),
-        )
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE analysis_batches SET status='failed' WHERE batch_id=?",
+        (batch_id,),
+    )
     conn.commit()
     logger.error("Batch %s marked failed: %s", batch_id, error)
 
@@ -245,20 +245,20 @@ def analysis_complete(
     _require_key(x_api_key)
     conn = db.get_conn()
     try:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                UPDATE analysis_batches
-                   SET status = %s,
-                       completed_at = CASE WHEN %s = 'completed'
-                                           THEN COALESCE(completed_at, now())
-                                           ELSE completed_at END
-                 WHERE batch_id = %s AND analysis_version = %s
-                """,
-                (req.status, req.status, req.batch_id, req.analysis_version),
-            )
-            if cur.rowcount == 0:
-                raise HTTPException(status_code=404, detail="batch not found")
+        cur = conn.cursor()
+        cur.execute(
+            """
+            UPDATE analysis_batches
+               SET status = ?,
+                   completed_at = CASE WHEN ? = 'completed'
+                                       THEN COALESCE(completed_at, CURRENT_TIMESTAMP)
+                                       ELSE completed_at END
+             WHERE batch_id = ? AND analysis_version = ?
+            """,
+            (req.status, req.status, req.batch_id, req.analysis_version),
+        )
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="batch not found")
         conn.commit()
         return {"batch_id": str(req.batch_id), "status": req.status}
     finally:

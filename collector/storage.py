@@ -1,17 +1,34 @@
-"""PostgreSQL 存储模块。
+"""SQLite 存储模块。
 
-所有生产数据只进 PostgreSQL（spec 第 2 节：Single Source of Truth）。
+所有生产数据只进 SQLite（spec 第 2 节：Single Source of Truth；ADR-002）。
 JSONL 只允许 backup/export，不作为生产主数据。
+
+设计要点：
+- 单机低频读写，不建连接池；每次操作独立连接（write lock 由 SQLite 保证）。
+- detect_types=PARSE_DECLTYPES：TIMESTAMP 列自动转 Python datetime。
+- WAL 模式：读写不互斥（对少量并发更稳）。
 """
 from __future__ import annotations
 
+import datetime as dt
 import logging
+import sqlite3
 from typing import Any, Dict, List, Optional
 
-import psycopg2
-import psycopg2.extras
-
 logger = logging.getLogger(__name__)
+
+# SQLite 默认 adapter 会把 tz-aware datetime 序列化为带时区字符串，
+# PARSE_DECLTYPES 的 convert_timestamp 无法解析（如 "23+00"）。
+# 统一：所有 datetime 存为 naive UTC（"YYYY-MM-DD HH:MM:SS.ffffff"），读回 naive（语义 UTC）。
+
+
+def _adapt_datetime_utc(value: dt.datetime) -> str:
+    if value.tzinfo is not None:
+        value = value.astimezone(dt.timezone.utc).replace(tzinfo=None)
+    return value.isoformat(sep=" ", timespec="microseconds")
+
+
+sqlite3.register_adapter(dt.datetime, _adapt_datetime_utc)
 
 POST_COLUMNS = (
     "post_id",
@@ -38,10 +55,16 @@ COMMENT_COLUMNS = (
 )
 
 
-def connect(database_url: str) -> "psycopg2.connection":
-    """建立数据库连接（配置来自环境变量 DATABASE_URL）。"""
-    conn = psycopg2.connect(database_url)
-    conn.autocommit = False
+def connect(db_path: str) -> sqlite3.Connection:
+    """建立 SQLite 连接（配置来自环境变量 DATABASE_PATH）。"""
+    conn = sqlite3.connect(
+        db_path,
+        detect_types=sqlite3.PARSE_DECLTYPES,
+        check_same_thread=False,
+        timeout=30,
+    )
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA journal_mode = WAL")
     return conn
 
 
@@ -49,8 +72,7 @@ def init_schema(conn, schema_sql_path: str) -> None:
     """执行 sql/schema.sql（幂等）。"""
     with open(schema_sql_path, "r", encoding="utf-8") as fh:
         sql = fh.read()
-    with conn.cursor() as cur:
-        cur.execute(sql)
+    conn.executescript(sql)
     conn.commit()
     logger.info("Schema initialized from %s", schema_sql_path)
 
@@ -59,16 +81,15 @@ def start_fetch_run(
     conn, subreddit: str, started_at: Optional[str] = None
 ) -> int:
     """插入 fetch_runs 记录并返回 run_id。"""
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            INSERT INTO fetch_runs (started_at, subreddit, status)
-            VALUES (COALESCE(%s, now()), %s, 'running')
-            RETURNING run_id
-            """,
-            (started_at, subreddit),
-        )
-        run_id = cur.fetchone()[0]
+    cur = conn.execute(
+        """
+        INSERT INTO fetch_runs (started_at, subreddit, status)
+        VALUES (COALESCE(?, CURRENT_TIMESTAMP), ?, 'running')
+        RETURNING run_id
+        """,
+        (started_at, subreddit),
+    )
+    run_id = cur.fetchone()[0]
     conn.commit()
     return run_id
 
@@ -83,20 +104,19 @@ def finish_fetch_run(
     error: Optional[str] = None,
 ) -> None:
     """结束 fetch_runs 记录。"""
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            UPDATE fetch_runs
-               SET finished_at = now(),
-                   posts_found = %s,
-                   posts_new = %s,
-                   comments_found = %s,
-                   status = %s,
-                   error = %s
-             WHERE run_id = %s
-            """,
-            (posts_found, posts_new, comments_found, status, error, run_id),
-        )
+    conn.execute(
+        """
+        UPDATE fetch_runs
+           SET finished_at = CURRENT_TIMESTAMP,
+               posts_found = ?,
+               posts_new = ?,
+               comments_found = ?,
+               status = ?,
+               error = ?
+         WHERE run_id = ?
+        """,
+        (posts_found, posts_new, comments_found, status, error, run_id),
+    )
     conn.commit()
 
 
@@ -109,11 +129,10 @@ def upsert_posts(conn, rows: List[Dict[str, Any]]) -> int:
     ]
     insert_sql = f"""
         INSERT INTO reddit_posts ({", ".join(POST_COLUMNS)})
-        VALUES ({", ".join(["%s"] * len(POST_COLUMNS))})
+        VALUES ({", ".join(["?"] * len(POST_COLUMNS))})
         ON CONFLICT (post_id) DO NOTHING
     """
-    with conn.cursor() as cur:
-        psycopg2.extras.execute_batch(cur, insert_sql, values)
+    conn.executemany(insert_sql, values)
     conn.commit()
     return len(values)
 
@@ -127,10 +146,9 @@ def upsert_comments(conn, rows: List[Dict[str, Any]]) -> int:
     ]
     insert_sql = f"""
         INSERT INTO reddit_comments ({", ".join(COMMENT_COLUMNS)})
-        VALUES ({", ".join(["%s"] * len(COMMENT_COLUMNS))})
+        VALUES ({", ".join(["?"] * len(COMMENT_COLUMNS))})
         ON CONFLICT (comment_id) DO NOTHING
     """
-    with conn.cursor() as cur:
-        psycopg2.extras.execute_batch(cur, insert_sql, values)
+    conn.executemany(insert_sql, values)
     conn.commit()
     return len(values)

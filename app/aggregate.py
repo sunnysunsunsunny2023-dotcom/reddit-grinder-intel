@@ -43,21 +43,21 @@ def query_posts(
         SELECT post_id, subreddit, title, selftext, created_utc,
                score, num_comments, permalink
           FROM reddit_posts
-         WHERE created_utc >= %s AND created_utc < %s
+         WHERE created_utc >= ? AND created_utc < ?
     """
     params: List[Any] = [start, end]
     if subreddit:
-        sql += " AND subreddit = %s"
+        sql += " AND subreddit = ?"
         params.append(subreddit)
     sql += " ORDER BY created_utc DESC"
     if limit:
-        sql += " LIMIT %s"
+        sql += " LIMIT ?"
         params.append(limit)
 
-    with conn.cursor() as cur:
-        cur.execute(sql, params)
-        cols = [c.name for c in cur.description]
-        return [dict(zip(cols, row)) for row in cur.fetchall()]
+    cur = conn.cursor()
+    cur.execute(sql, params)
+    cols = [c[0] for c in cur.description]
+    return [dict(zip(cols, row)) for row in cur.fetchall()]
 
 
 def topic_series(

@@ -34,14 +34,14 @@ jobs:
             echo "==> 服务器系统探测"
             cat /etc/os-release 2>/dev/null | head -6 || true
             echo "--> 包管理器: $(command -v apt-get dnf yum apk 2>/dev/null || echo none)"
-            echo "--> psql: $(command -v psql || echo none)"
+            echo "--> 数据库: SQLite (ADR-002，无需 PostgreSQL)"
             echo "--> whoami: $(id -un)"
             cd /tmp
             rm -rf reddit-intel-deploy
             git clone --depth 1 https://${{ secrets.DEPLOY_PAT }}@github.com/${{ github.repository }}.git reddit-intel-deploy
             mkdir -p /opt/reddit-intel
             cat > /opt/reddit-intel/.env <<'ENVEOF'
-            DATABASE_URL=${{ secrets.REDDIT_DATABASE_URL }}
+            DATABASE_PATH=/opt/reddit-intel/data/reddit_intel.db
             REDDIT_API_KEY=${{ secrets.REDDIT_API_KEY }}
             ANALYZER_API_BASE=${{ secrets.ANALYZER_API_BASE }}
             ANALYZER_API_KEY=${{ secrets.ANALYZER_API_KEY }}
@@ -69,8 +69,8 @@ jobs:
             systemctl is-active reddit-intel-api
             echo "==> collector timer 状态"
             systemctl list-timers reddit-intel-collector.timer --no-pager || true
-            echo "==> PostgreSQL 状态"
-            systemctl is-active postgresql
+            echo "==> SQLite 数据文件"
+            ls -lh /opt/reddit-intel/data/ 2>/dev/null || true
 
       - name: Full verification on Aliyun (仅手动触发)
         if: github.event_name == 'workflow_dispatch'

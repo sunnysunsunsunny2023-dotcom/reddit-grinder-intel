@@ -359,7 +359,7 @@ def analyze_batch(
     """执行一个 batch 的 LLM 分析（DeepSeek），结果写入 analysis_results。
 
     Args:
-        conn: psycopg2 连接。
+        conn: sqlite3 连接。
         batch_id: analysis_batches.batch_id。
         report_type: daily / weekly。
         context: aggregate 确定性上下文。
@@ -384,31 +384,31 @@ def analyze_batch(
     text = deepseek_client.chat(messages, temperature=0.3, max_tokens=4096, json_mode=True)
     result = deepseek_client.parse_json_response(text)
 
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            INSERT INTO analysis_results
-                (batch_id, report_type, period_start, period_end, result_json)
-            VALUES (%s, %s, %s, %s, %s)
-            ON CONFLICT (batch_id) DO UPDATE
-               SET result_json = EXCLUDED.result_json
-            """,
-            (
-                batch_id,
-                report_type,
-                context.get("period_start"),
-                context.get("period_end"),
-                result,
-            ),
-        )
-        cur.execute(
-            """
-            UPDATE analysis_batches
-               SET status = 'completed', completed_at = now()
-             WHERE batch_id = %s
-            """,
-            (batch_id,),
-        )
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO analysis_results
+            (batch_id, report_type, period_start, period_end, result_json)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT (batch_id) DO UPDATE
+           SET result_json = excluded.result_json
+        """,
+        (
+            batch_id,
+            report_type,
+            context.get("period_start"),
+            context.get("period_end"),
+            result,
+        ),
+    )
+    cur.execute(
+        """
+        UPDATE analysis_batches
+           SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+         WHERE batch_id = ?
+        """,
+        (batch_id,),
+    )
     conn.commit()
     logger.info("Batch %s analysis completed", batch_id)
     return result

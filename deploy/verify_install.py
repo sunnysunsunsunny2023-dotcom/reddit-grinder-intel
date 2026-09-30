@@ -1,27 +1,35 @@
-"""部署后验证脚本：输出数据库各表行数。
+"""部署后验证脚本：输出 SQLite 各表行数（ADR-002）。
 
 用法：sudo -u reddit-intel ./.venv/bin/python deploy/verify_install.py
 """
 import os
-
-import psycopg2
+import sqlite3
+import sys
 
 
 def main() -> None:
-    c = psycopg2.connect(os.environ["DATABASE_URL"])
+    db_path = os.environ.get(
+        "DATABASE_PATH", "/opt/reddit-intel/data/reddit_intel.db"
+    )
+    if not os.path.exists(db_path):
+        print("ERROR: database file not found:", db_path)
+        sys.exit(1)
+    conn = sqlite3.connect(db_path)
     try:
-        with c.cursor() as cur:
-            for t in (
-                "reddit_posts",
-                "reddit_comments",
-                "fetch_runs",
-                "analysis_batches",
-                "analysis_results",
-            ):
-                cur.execute("SELECT count(*) FROM " + t)
+        for t in (
+            "reddit_posts",
+            "reddit_comments",
+            "fetch_runs",
+            "analysis_batches",
+            "analysis_results",
+        ):
+            try:
+                cur = conn.execute("SELECT count(*) FROM " + t)
                 print(t, cur.fetchone()[0])
+            except sqlite3.OperationalError as exc:
+                print(t, "MISSING:", exc)
     finally:
-        c.close()
+        conn.close()
 
 
 if __name__ == "__main__":
