@@ -76,3 +76,10 @@
 - **修复**：`coze/render_daily.py::fetch_payload` 改 `api/reddit/analysis-batch`
 - **回归用例**：`tests/test_render_daily.py::test_fetch_payload_rejects_non_dict`（HTTP 层）＋真实公网 dry-run 200
 - **版本**：v0.2.2
+
+### RGI-008：Weekly analysis-batch 502 — DeepSeek JSON 被 max_tokens 截断
+- **现象**：`{"detail":"analysis failed: Model output is not valid JSON: {\n ... \"最大竞品变化\" ...`（weekly 必现，daily 正常）
+- **根因**：weekly 输出 6 个板块更长，4096 max_tokens 下 JSON 在末尾被截断、无闭合 `}`，`parse_json_response` 无法容错
+- **修复**：`analyst/analyzer.py::analyze_batch` 按 report_type 区分 max_tokens：weekly=8192，daily=4096
+- **回归用例**：`tests/test_analyzer.py::test_analyze_batch_weekly_uses_larger_max_tokens`
+- **版本**：v0.2.3

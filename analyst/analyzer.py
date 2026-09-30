@@ -385,11 +385,13 @@ def analyze_batch(
         messages = _build_daily_prompt(context)
 
     logger.info("Calling DeepSeek for batch %s (%s)", batch_id, report_type)
+    # weekly 输出更长（6 个板块），用更大 max_tokens 避免 JSON 被截断不闭合（RGI-008）
+    max_tokens = 8192 if report_type == "weekly" else 4096
     last_err: Optional[Exception] = None
     for attempt in range(1, 4):  # 空 content / 解析失败最多重试 2 次
         try:
             text = deepseek_client.chat(
-                messages, temperature=0.3, max_tokens=4096, json_mode=True
+                messages, temperature=0.3, max_tokens=max_tokens, json_mode=True
             )
             result = deepseek_client.parse_json_response(text)
             break

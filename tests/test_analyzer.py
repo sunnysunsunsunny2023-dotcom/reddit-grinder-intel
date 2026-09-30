@@ -210,3 +210,62 @@ def test_analyze_batch_gives_up_after_3_failures(tmp_path, monkeypatch):
     with pytest.raises(deepseek_client.DeepSeekError):
         analyze_batch(conn, batch_id, "daily", context)
     conn.close()
+
+
+def test_analyze_batch_weekly_uses_larger_max_tokens(tmp_path, monkeypatch):
+    """回归 RGI-008：weekly 调用 chat 必须传 8192 max_tokens，防止 JSON 被截断。"""
+    import analyst.analyzer as analyzer
+    from analyst import deepseek_client
+    from collector import storage
+
+    calls: dict = {}
+
+    def record_chat(messages, temperature=0.3, max_tokens=4096, json_mode=True):
+        calls["max_tokens"] = max_tokens
+        return json.dumps(
+            {
+                "executive_summary": [],
+                "demand_trends": [],
+                "competitor_intelligence": [],
+                "geimori_voice": {"mentions": 0, "sentiment": "neutral"},
+                "customer_priorities": [],
+                "next_week_actions": [],
+            }
+        )
+
+    monkeypatch.setattr(deepseek_client, "is_configured", lambda: True)
+    monkeypatch.setattr(deepseek_client, "chat", record_chat)
+
+    db_path = tmp_path / "w.db"
+    conn = storage.connect(str(db_path))
+    storage.init_schema(conn, "sql/schema.sql")
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO analysis_batches"
+        " (report_type, period_start, period_end, analysis_version, status)"
+        " VALUES ('weekly', '2026-01-01T00:00:00', '2026-01-08T00:00:00', 'v1', 'pending')"
+    )
+    conn.commit()
+    batch_id = cur.lastrowid
+
+    context = {
+        "posts": [],
+        "posts_previous_week": [],
+        "statistics": {
+            "total_new_posts": 0, "grinder_related_posts": 0,
+            "grinder_ratio": 0.0, "geimori_mentions": 0,
+            "competitor_mentions": 0, "high_signal_topics": 0,
+            "alert_count": 0,
+        },
+        "baseline_7d": {},
+        "baseline_30d": {},
+        "topic_trends": {},
+        "brand_trends": {"geimori": {"mentions": 0}},
+        "competitor_trends": {},
+        "signal_alerts": [],
+        "top_posts": [],
+        "period_start": dt.datetime(2026, 1, 1, 0, 0, 0),
+        "period_end": dt.datetime(2026, 1, 8, 0, 0, 0),
+    }
+    analyzer.analyze_batch(conn, batch_id, "weekly", context)
+    assert calls["max_tokens"] == 8192
