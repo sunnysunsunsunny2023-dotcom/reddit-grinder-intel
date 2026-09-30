@@ -122,3 +122,29 @@ def test_rss_fallback_when_json_403():
     assert len(posts) == 2
     assert f._session.calls[0].endswith(".json")
     assert f._session.calls[1].endswith(".rss")
+
+
+def test_prefer_rss_skips_json():
+    """prefer_rss=True 时直接走 RSS，不先打 JSON（避免 403 试探污染 IP 限速窗口）。"""
+
+    class FakeResp:
+        def __init__(self, status, text=""):
+            self.status_code = status
+            self.text = text
+
+    class FakeSession:
+        def __init__(self):
+            self.calls = []
+            self.headers = {}
+
+        def get(self, url, params=None, timeout=None):
+            self.calls.append(url)
+            if url.endswith(".json"):
+                return FakeResp(403)
+            return FakeResp(200, SAMPLE_RSS)
+
+    f = RedditFetcher(session=FakeSession(), prefer_rss=True)
+    posts = f.fetch_new_posts("pourover", limit=5)
+    assert len(posts) == 2
+    assert len(f._session.calls) == 1
+    assert f._session.calls[0].endswith(".rss")

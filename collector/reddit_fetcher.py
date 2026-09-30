@@ -126,10 +126,12 @@ class RedditFetcher:
         user_agent: str = DEFAULT_USER_AGENT,
         timeout: int = 30,
         sleep_seconds: float = 2.0,
+        prefer_rss: bool = False,
         session: Optional[requests.Session] = None,
     ) -> None:
         self.timeout = timeout
         self.sleep_seconds = sleep_seconds
+        self.prefer_rss = prefer_rss
         self._session = session or requests.Session()
         self._session.headers.update({"User-Agent": user_agent})
 
@@ -152,6 +154,21 @@ class RedditFetcher:
         Raises:
             RedditFetchError: 网络或 HTTP 错误（JSON 与 RSS 均失败）。
         """
+        # 数据中心 IP 上 Reddit JSON 端点长期 403（实测所有 UA），
+        # 且先打 JSON 的 403 请求会污染 IP 限速窗口，导致紧接着的 RSS 也 429。
+        # prefer_rss=True（服务器部署默认）时直接走 RSS，绕开 JSON 试探。
+        if self.prefer_rss:
+            try:
+                return self._fetch_rss(subreddit, limit=limit)
+            except RedditFetchError as rss_exc:
+                logger.warning("RSS failed for r/%s, fallback JSON: %s", subreddit, rss_exc)
+                try:
+                    return self._fetch_json(subreddit, limit=limit, after=after)
+                except RedditFetchError as json_exc:
+                    raise RedditFetchError(
+                        f"RSS and JSON fallback failed for r/{subreddit}: "
+                        f"rss={rss_exc}; json={json_exc}"
+                    ) from None
         try:
             return self._fetch_json(subreddit, limit=limit, after=after)
         except RedditFetchError as json_exc:
@@ -241,4 +258,5 @@ def build_fetcher_from_env() -> RedditFetcher:
 
     ua = os.environ.get("REDDIT_USER_AGENT", "").strip() or DEFAULT_USER_AGENT
     sleep_s = float(os.environ.get("REDDIT_SLEEP_SECONDS", "2.0"))
-    return RedditFetcher(user_agent=ua, sleep_seconds=sleep_s)
+    prefer_rss = os.environ.get("REDDIT_PREFER_RSS", "").strip().lower() in ("1", "true", "yes")
+    return RedditFetcher(user_agent=ua, sleep_seconds=sleep_s, prefer_rss=prefer_rss)

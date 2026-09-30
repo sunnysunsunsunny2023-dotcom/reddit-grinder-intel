@@ -48,6 +48,7 @@ jobs:
             ANALYZER_MODEL=${{ secrets.ANALYZER_MODEL }}
             REDDIT_USER_AGENT="linux:reddit-grinder-intel:v0.1.0 (by /u/reddit_grinder_intel; internal monitoring)"
             REDDIT_SLEEP_SECONDS=${{ secrets.REDDIT_SLEEP_SECONDS }}
+            REDDIT_PREFER_RSS=1
             ENVEOF
             chmod 600 /opt/reddit-intel/.env
             echo "env written: $(wc -c < /opt/reddit-intel/.env) bytes"
