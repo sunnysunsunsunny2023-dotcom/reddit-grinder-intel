@@ -39,6 +39,24 @@ else
 fi
 echo "--> 使用包管理器: $PM"
 
+# 低内存服务器：确保至少有 2G swap 再装包（dnf/rpm 事务峰值内存）
+MEM_TOTAL_MB=$(free -m | awk '/Mem:/{print $2}')
+SWAP_TOTAL_MB=$(free -m | awk '/Swap:/{print $2}')
+if [ "${MEM_TOTAL_MB:-0}" -lt 1024 ]; then
+  echo "==> 低内存服务器（${MEM_TOTAL_MB}MB），扩展 swap 到 2G"
+  if [ "${SWAP_TOTAL_MB:-0}" -lt 2048 ]; then
+    if [ ! -f /swapfile2 ]; then
+      fallocate -l 2G /swapfile2 2>/dev/null || dd if=/dev/zero of=/swapfile2 bs=1M count=2048
+      chmod 600 /swapfile2
+      mkswap /swapfile2 && swapon /swapfile2
+    else
+      swapon /swapfile2 2>/dev/null || true
+    fi
+    grep -q "swapfile2" /etc/fstab 2>/dev/null || echo "/swapfile2 none swap sw 0 0" >> /etc/fstab
+  fi
+  free -h | grep -E "Mem|Swap" | sed 's/^/    /' || true
+fi
+
 echo "==> [1/6] 安装 PostgreSQL（如未安装）"
 if ! command -v psql >/dev/null 2>&1; then
   if [ "$PM" = "apt" ]; then
@@ -51,9 +69,22 @@ if ! command -v psql >/dev/null 2>&1; then
     if [ ! -f /var/lib/pgsql/data/PG_VERSION ]; then
       postgresql-setup --initdb || su - postgres -c "/usr/bin/initdb -D /var/lib/pgsql/data" || true
     fi
+    # 低内存服务器：调低 PG 内存配置
+    if [ -f /var/lib/pgsql/data/postgresql.conf ]; then
+      sed -i \
+        -e "s/^#*shared_buffers = .*/shared_buffers = 64MB/" \
+        -e "s/^#*max_connections = .*/max_connections = 20/" \
+        -e "s/^#*work_mem = .*/work_mem = 4MB/" \
+        -e "s/^#*maintenance_work_mem = .*/maintenance_work_mem = 64MB/" \
+        -e "s/^#*effective_cache_size = .*/effective_cache_size = 128MB/" \
+        /var/lib/pgsql/data/postgresql.conf
+    fi
   fi
 fi
 systemctl enable --now postgresql || true
+# RHEL 系首次启动需确认 socket/端口可用（默认 5432）
+sleep 2
+pg_isready -h 127.0.0.1 -p 5432 || true
 
 echo "==> [2/6] 创建独立用户 + 目录 + 复制代码"
 id -u "$RUN_USER" >/dev/null 2>&1 || useradd --system --create-home --shell /usr/sbin/nologin "$RUN_USER"
