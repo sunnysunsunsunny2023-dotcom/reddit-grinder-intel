@@ -74,7 +74,7 @@ def init_schema(conn, schema_sql_path: str) -> None:
     with open(schema_sql_path, "r", encoding="utf-8") as fh:
         sql = fh.read()
     conn.executescript(sql)
-    conn.commit()
+    _migrate_created_utc(conn)
     logger.info("Schema initialized from %s", schema_sql_path)
 
 
@@ -124,14 +124,37 @@ def finish_fetch_run(
 
 
 def _bind_row(row: Dict[str, Any], columns) -> List[Any]:
-    """把 row 转成绑定参数：raw_json（dict）序列化为 JSON 文本。"""
+    """把 row 转成绑定参数：raw_json（dict）序列化为 JSON 文本；
+    created_utc（epoch int）转 naive UTC datetime（TIMESTAMP 列语义）。"""
     out = []
     for col in columns:
         v = row.get(col)
         if col == "raw_json" and isinstance(v, dict):
             v = _json.dumps(v, ensure_ascii=False)
+        if col == "created_utc" and isinstance(v, (int, float)):
+            v = dt.datetime.fromtimestamp(
+                v, tz=dt.timezone.utc
+            ).replace(tzinfo=None)
         out.append(v)
     return out
+
+
+def _migrate_created_utc(conn) -> None:
+    """把旧库中存成 epoch 整数的 created_utc 迁移为 ISO 时间（幂等）。
+
+    早期版本 RSS raw_json 的 created_utc 直接存 epoch int，TIMESTAMP 列
+    在 PARSE_DECLTYPES 下会触发 convert_timestamp 的 split 报错
+    （not enough values to unpack）。datetime(x, 'unixepoch') 生成
+    "YYYY-MM-DD HH:MM:SS"（UTC），幂等：已迁移的行 typeof 不再是 integer。
+    """
+    for table in ("reddit_posts", "reddit_comments"):
+        cur = conn.execute(
+            f"UPDATE {table} SET created_utc = datetime(created_utc, 'unixepoch')"
+            " WHERE typeof(created_utc) = 'integer'"
+        )
+        if cur.rowcount:
+            logger.info("Migrated %d created_utc rows in %s", cur.rowcount, table)
+    conn.commit()
 
 
 def upsert_posts(conn, rows: List[Dict[str, Any]]) -> int:

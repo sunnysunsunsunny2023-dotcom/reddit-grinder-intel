@@ -206,3 +206,68 @@ def test_upsert_posts_serializes_raw_json(tmp_path):
     raw = cur.fetchone()[0]
     assert '"source": "rss"' in raw
     conn.close()
+
+
+def test_upsert_posts_created_utc_queryable(tmp_path):
+    """upsert_posts 把 epoch created_utc 转 naive UTC datetime 入库，
+    查询 TIMESTAMP 列返回 datetime 而不触发 convert_timestamp 报错。"""
+    from collector import storage
+
+    db = tmp_path / "test.db"
+    conn = storage.connect(str(db))
+    storage.init_schema(conn, "sql/schema.sql")
+    rows = [
+        {
+            "post_id": "t3_rssc1",
+            "subreddit": "pourover",
+            "title": "Title",
+            "selftext": "Body",
+            "created_utc": 1790755200,
+            "score": 0,
+            "upvote_ratio": None,
+            "num_comments": 0,
+            "permalink": "/r/pourover/comments/rssc1/title",
+            "flair": None,
+            "raw_json": {"source": "rss"},
+        }
+    ]
+    storage.upsert_posts(conn, rows)
+
+    import datetime as dt
+
+    rows_out = conn.execute(
+        "SELECT created_utc FROM reddit_posts WHERE post_id = 't3_rssc1'"
+    ).fetchall()
+    val = rows_out[0][0]
+    assert isinstance(val, dt.datetime)
+    assert val == dt.datetime(2026, 9, 30, 8, 0)
+    conn.close()
+
+
+def test_migrate_created_utc_old_epoch_rows(tmp_path):
+    """旧库中 created_utc 存成 epoch 整数的行被迁移为 ISO 时间后查询正常。"""
+    from collector import storage
+
+    db = tmp_path / "test.db"
+    conn = storage.connect(str(db))
+    storage.init_schema(conn, "sql/schema.sql")
+    # 绕过 _bind_row 直接插入旧格式（epoch int）
+    conn.execute(
+        "INSERT INTO reddit_posts"
+        " (post_id, subreddit, title, selftext, created_utc, score,"
+        "  upvote_ratio, num_comments, permalink, flair, raw_json)"
+        " VALUES ('t3_old1', 'espresso', 'Old', 'Body', 1790755200, 0,"
+        "         NULL, 0, '/r/espresso/comments/old1/x', NULL, '{}')"
+    )
+    conn.commit()
+    # 重新 init（实际部署时旧库会走 init_schema 迁移）
+    storage.init_schema(conn, "sql/schema.sql")
+
+    import datetime as dt
+
+    val = conn.execute(
+        "SELECT created_utc FROM reddit_posts WHERE post_id = 't3_old1'"
+    ).fetchone()[0]
+    assert isinstance(val, dt.datetime)
+    assert val == dt.datetime(2026, 9, 30, 8, 0)
+    conn.close()
