@@ -161,6 +161,12 @@ def healthz() -> Dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/health")
+def health() -> Dict[str, str]:
+    """CI Health check 使用 /health（与 /healthz 等价）。"""
+    return healthz()
+
+
 @app.get("/api/reddit/analysis-batch")
 def analysis_batch(
     report_type: str = Query(..., pattern="^(daily|weekly)$"),
