@@ -14,7 +14,15 @@ echo "==> [0/6] 系统探测"
 cat /etc/os-release 2>/dev/null | head -4 || true
 echo "--> 包管理器: $(command -v apt-get dnf yum apk 2>/dev/null || echo none)"
 echo "--> psql: $(command -v psql || echo none)"
-echo "--> python3: $(command -v python3 || echo none) $($(command -v python3 >/dev/null 2>&1 && python3 --version || true))"
+if command -v python3 >/dev/null 2>&1; then
+  echo "--> python3: $(python3 --version 2>/dev/null || echo unknown)"
+else
+  echo "--> python3: none"
+fi
+echo "--> 内存: $(free -h 2>/dev/null | awk '/Mem:/{print $2" 总, "$7" 可用"}' || echo unknown)"
+echo "--> CPU: $(nproc) 核"
+echo "--> 内存占用 Top5:"
+ps aux --sort=-%mem 2>/dev/null | head -6 | awk '{printf "    %s %s%% %sMB %s\n", $1, $4, int($6/1024), substr($0, index($0,$11), 60)}' || true
 
 # 包管理分支
 if command -v apt-get >/dev/null 2>&1; then
@@ -35,7 +43,7 @@ if ! command -v psql >/dev/null 2>&1; then
     apt-get update -y
     apt-get install -y postgresql postgresql-contrib
   else
-    dnf install -y postgresql-server postgresql postgresql-contrib
+    dnf install -y --setopt=install_weak_deps=False --setopt=max_parallel_downloads=1 postgresql-server postgresql postgresql-contrib
     # RHEL 系需要显式 initdb
     if [ ! -f /var/lib/pgsql/data/PG_VERSION ]; then
       postgresql-setup --initdb || su - postgres -c "/usr/bin/initdb -D /var/lib/pgsql/data" || true
