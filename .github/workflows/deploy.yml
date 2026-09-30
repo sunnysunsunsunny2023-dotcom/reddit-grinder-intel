@@ -31,6 +31,11 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
+            echo "==> 服务器系统探测"
+            cat /etc/os-release 2>/dev/null | head -6 || true
+            echo "--> 包管理器: $(command -v apt-get dnf yum apk 2>/dev/null || echo none)"
+            echo "--> psql: $(command -v psql || echo none)"
+            echo "--> whoami: $(id -un)"
             cd /tmp
             rm -rf reddit-intel-deploy
             git clone --depth 1 https://${{ secrets.DEPLOY_PAT }}@github.com/${{ github.repository }}.git reddit-intel-deploy
