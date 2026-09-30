@@ -97,3 +97,6 @@ jobs:
             curl -s --max-time 60 -H "X-API-Key: $REDDIT_API_KEY" \
               -w "\nHTTP_STATUS:%{http_code}\n" \
               "http://127.0.0.1:8086/api/reddit/analysis-batch?report_type=daily&hours=24" | head -c 800
+            echo ""
+            echo "==> reddit-intel-api 最近日志（定位 500 traceback）"
+            journalctl -u reddit-intel-api -n 40 --no-pager | tail -30 || true

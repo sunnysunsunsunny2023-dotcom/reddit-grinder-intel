@@ -1,7 +1,7 @@
 """部署后验证脚本：输出 SQLite 各表行数（ADR-002）。
 
 用法：sudo -u reddit-intel ./.venv/bin/python deploy/verify_install.py
-版本：v2.1（2026-09-30，analysis-batch 验证步骤输出 HTTP 状态码）
+版本：v2.2（2026-09-30，验证步骤加 journalctl 定位 500）
 """
 import os
 import sqlite3
