@@ -174,3 +174,35 @@ def test_load_env_file(tmp_path, monkeypatch):
     assert __import__("os").environ["REDDIT_PREFER_RSS"] == "1"
     assert __import__("os").environ["REDDIT_USER_AGENT"] == "custom ua"
     assert __import__("os").environ["ALREADY_SET"] == "keepme"
+
+
+def test_upsert_posts_serializes_raw_json(tmp_path):
+    """upsert_posts 把 raw_json dict 序列化为 JSON 文本入库（RSS fallback 的 raw_json 是 dict）。"""
+    from collector import storage
+
+    db = tmp_path / "test.db"
+    conn = storage.connect(str(db))
+    storage.init_schema(conn, "sql/schema.sql")
+    rows = [
+        {
+            "post_id": "t3_rssx1",
+            "subreddit": "pourover",
+            "title": "Title",
+            "selftext": "Body",
+            "created_utc": 1790755200,
+            "score": 0,
+            "upvote_ratio": None,
+            "num_comments": 0,
+            "permalink": "/r/pourover/comments/rssx1/title",
+            "flair": "Review",
+            "raw_json": {"source": "rss", "title": "Title"},
+        }
+    ]
+    inserted = storage.upsert_posts(conn, rows)
+    assert inserted == 1
+    cur = conn.execute(
+        "SELECT raw_json FROM reddit_posts WHERE post_id = 't3_rssx1'"
+    )
+    raw = cur.fetchone()[0]
+    assert '"source": "rss"' in raw
+    conn.close()

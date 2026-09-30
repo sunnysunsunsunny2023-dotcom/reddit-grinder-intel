@@ -11,6 +11,7 @@ JSONL 只允许 backup/export，不作为生产主数据。
 from __future__ import annotations
 
 import datetime as dt
+import json as _json
 import logging
 import sqlite3
 from typing import Any, Dict, List, Optional
@@ -122,13 +123,22 @@ def finish_fetch_run(
     conn.commit()
 
 
+def _bind_row(row: Dict[str, Any], columns) -> List[Any]:
+    """把 row 转成绑定参数：raw_json（dict）序列化为 JSON 文本。"""
+    out = []
+    for col in columns:
+        v = row.get(col)
+        if col == "raw_json" and isinstance(v, dict):
+            v = _json.dumps(v, ensure_ascii=False)
+        out.append(v)
+    return out
+
+
 def upsert_posts(conn, rows: List[Dict[str, Any]]) -> int:
     """批量写入新帖（ON CONFLICT DO NOTHING），返回实际插入数。"""
     if not rows:
         return 0
-    values = [
-        [row.get(col) for col in POST_COLUMNS] for row in rows
-    ]
+    values = [_bind_row(row, POST_COLUMNS) for row in rows]
     insert_sql = f"""
         INSERT INTO reddit_posts ({", ".join(POST_COLUMNS)})
         VALUES ({", ".join(["?"] * len(POST_COLUMNS))})
@@ -143,9 +153,7 @@ def upsert_comments(conn, rows: List[Dict[str, Any]]) -> int:
     """批量写入评论（ON CONFLICT DO NOTHING），返回实际插入数。"""
     if not rows:
         return 0
-    values = [
-        [row.get(col) for col in COMMENT_COLUMNS] for row in rows
-    ]
+    values = [_bind_row(row, COMMENT_COLUMNS) for row in rows]
     insert_sql = f"""
         INSERT INTO reddit_comments ({", ".join(COMMENT_COLUMNS)})
         VALUES ({", ".join(["?"] * len(COMMENT_COLUMNS))})
