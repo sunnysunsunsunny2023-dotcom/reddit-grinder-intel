@@ -64,13 +64,20 @@ if ! command -v psql >/dev/null 2>&1; then
     apt-get update -y
     apt-get install -y postgresql postgresql-contrib
   else
-    echo "--> cgroup 内存限制: $(cat /sys/fs/cgroup/memory.max 2>/dev/null || cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null || echo none)"
+    echo "--> cgroup memory.max: $(cat /sys/fs/cgroup/memory.max 2>/dev/null || echo none)"
+    echo "--> cgroup memory.swap.max: $(cat /sys/fs/cgroup/memory.swap.max 2>/dev/null || echo none)"
+    echo "--> ulimit -v: $(ulimit -v)"
     dnf install -y --setopt=install_weak_deps=False --setopt=max_parallel_downloads=1 postgresql-server postgresql || {
-      echo "一次性安装失败，尝试分步安装";
-      dnf install -y --setopt=install_weak_deps=False postgresql-server || exit 1;
-      dnf install -y --setopt=install_weak_deps=False postgresql || exit 1;
+      echo "dnf 一次性安装失败，输出 OOM 诊断并尝试分步/yum";
+      dmesg 2>/dev/null | tail -6 | grep -i -E "oom|killed|out of memory" || true;
+      dmesg 2>/dev/null | tail -6 || true;
+      dnf install -y --setopt=install_weak_deps=False postgresql-server || {
+        echo "dnf 分步仍失败，改用 yum";
+        yum install -y --setopt=install_weak_deps=False postgresql-server || exit 1;
+      };
+      dnf install -y --setopt=install_weak_deps=False postgresql || yum install -y postgresql || exit 1;
     }
-    dnf install -y postgresql-contrib || true
+    dnf install -y postgresql-contrib || yum install -y postgresql-contrib || true
     # RHEL 系需要显式 initdb
     if [ ! -f /var/lib/pgsql/data/PG_VERSION ]; then
       postgresql-setup --initdb || su - postgres -c "/usr/bin/initdb -D /var/lib/pgsql/data" || true
