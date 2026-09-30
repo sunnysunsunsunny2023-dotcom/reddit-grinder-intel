@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/sunnysunsunsunny2023-dotcom/reddit-grinder-intel/blob/main/schemas/weekly_intelligence.schema.json",
+  "title": "Reddit Grinder Weekly Intelligence",
+  "description": "周报：本周需求 / 竞品 / 品牌 / 优先级与下周行动。所有数值来自阿里云确定性统计与 DeepSeek 分析（ADR-001）。与 daily_pulse.schema.json 相互独立，禁止共用。",
+  "type": "object",
+  "required": [
+    "report_date",
+    "period",
+    "executive_summary",
+    "demand_trends",
+    "competitor_intelligence",
+    "geimori_voice",
+    "customer_priorities",
+    "next_week_actions",
+    "metadata"
+  ],
+  "properties": {
+    "report_date": {
+      "type": "string",
+      "description": "报告日期（Asia/Shanghai 本地日期，YYYY-MM-DD）"
+    },
+    "period": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": "string", "description": "窗口开始 ISO8601 UTC" },
+        "end": { "type": "string", "description": "窗口结束 ISO8601 UTC" }
+      }
+    },
+    "executive_summary": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["point", "evidence"],
+        "properties": {
+          "point": { "type": "string" },
+          "evidence": { "type": "string" }
+        }
+      }
+    },
+    "demand_trends": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["topic", "trend", "confidence"],
+        "properties": {
+          "topic": { "type": "string" },
+          "mentions": { "type": "integer", "minimum": 0 },
+          "previous_week": { "type": "integer", "minimum": 0 },
+          "wow_change_pct": { "type": ["number", "null"] },
+          "share_of_grinder_discussion": { "type": "number", "minimum": 0 },
+          "avg_30d": { "type": ["number", "null"] },
+          "trend": {
+            "type": "string",
+            "enum": ["rising", "stable", "declining", "spike", "emerging", "structural_priority"]
+          },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+          "interpretation": { "type": "string" }
+        }
+      }
+    },
+    "competitor_intelligence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["brand"],
+        "properties": {
+          "brand": { "type": "string" },
+          "mentions": { "type": "integer", "minimum": 0 },
+          "sentiment": {
+            "type": "string",
+            "enum": ["positive", "negative", "mixed", "neutral"]
+          },
+          "common_praise": { "type": "string" },
+          "common_complaints": { "type": "string" },
+          "high_engagement_threads": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "potential_opportunity": { "type": "string" },
+          "mention_share_note": { "type": "string" }
+        }
+      }
+    },
+    "geimori_voice": {
+      "type": "object",
+      "required": ["mentions", "sentiment"],
+      "properties": {
+        "mentions": { "type": "integer", "minimum": 0 },
+        "sentiment": { "type": "string" },
+        "positive_themes": { "type": "array", "items": { "type": "string" } },
+        "negative_themes": { "type": "array", "items": { "type": "string" } },
+        "questions_objections": { "type": "array", "items": { "type": "string" } },
+        "comparison_targets": { "type": "array", "items": { "type": "string" } },
+        "actionable_response": { "type": "string" }
+      }
+    },
+    "customer_priorities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["priority", "topic"],
+        "properties": {
+          "priority": {
+            "type": "string",
+            "enum": ["structural_priority", "emerging_trend", "temporary_spike", "weak_signal"]
+          },
+          "topic": { "type": "string" },
+          "priority_score": { "type": ["number", "null"] },
+          "interpretation": { "type": "string" }
+        }
+      }
+    },
+    "next_week_actions": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["action", "confidence"],
+        "properties": {
+          "action": { "type": "string" },
+          "evidence": { "type": "string" },
+          "business_reason": { "type": "string" },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+          "urgency": { "type": "string", "enum": ["high", "medium", "low"] },
+          "category": {
+            "type": "string",
+            "enum": ["Ads", "Blog_SEO", "Product", "Community", "Research"]
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "生成元信息：batch_id / generated_at / analysis_version / source"
+    }
+  }
+}
