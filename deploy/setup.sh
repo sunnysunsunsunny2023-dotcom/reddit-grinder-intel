@@ -64,9 +64,10 @@ if ! command -v psql >/dev/null 2>&1; then
     apt-get update -y
     apt-get install -y postgresql postgresql-contrib
   else
-    echo "--> cgroup memory.max: $(cat /sys/fs/cgroup/memory.max 2>/dev/null || echo none)"
-    echo "--> cgroup memory.swap.max: $(cat /sys/fs/cgroup/memory.swap.max 2>/dev/null || echo none)"
-    echo "--> ulimit -v: $(ulimit -v)"
+    echo "--> cgroup memory.max(v2): $(cat /sys/fs/cgroup/memory.max 2>/dev/null || echo none)"
+    echo "--> cgroup memory.limit(v1): $(cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null || echo none)"
+    echo "--> cgroup memsw.limit(v1): $(cat /sys/fs/cgroup/memory/memory.memsw.limit_in_bytes 2>/dev/null || echo none)"
+    echo "--> swap 使用策略: swappiness=$(cat /proc/sys/vm/swappiness 2>/dev/null || echo unknown)"
     dnf install -y --setopt=install_weak_deps=False --setopt=max_parallel_downloads=1 postgresql-server postgresql || {
       echo "dnf 一次性安装失败，输出 OOM 诊断并尝试分步/yum";
       dmesg 2>/dev/null | tail -6 | grep -i -E "oom|killed|out of memory" || true;
