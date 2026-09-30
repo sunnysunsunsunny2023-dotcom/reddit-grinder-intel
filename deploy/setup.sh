@@ -10,6 +10,11 @@ SRC_DIR="${1:-/root/deploy_tmp}"
 RUN_USER=reddit-intel
 PORT=8086
 
+echo "==> [0/6] 系统探测"
+cat /etc/os-release 2>/dev/null | head -4 || true
+echo "--> 包管理器: $(command -v apt-get dnf yum apk 2>/dev/null || echo none)"
+echo "--> psql: $(command -v psql || echo none)"
+
 echo "==> [1/6] 安装 PostgreSQL（如未安装）"
 if ! command -v psql >/dev/null 2>&1; then
   export DEBIAN_FRONTEND=noninteractive
