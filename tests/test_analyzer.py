@@ -119,3 +119,94 @@ def test_analyze_batch_serializes_result_json(tmp_path, monkeypatch):
     assert row is not None
     assert json.loads(row[0])["summary"] == "fake summary"
     conn.close()
+
+
+def test_analyze_batch_retries_on_empty_content(tmp_path, monkeypatch):
+    """DeepSeek 偶发空 content 时 analyze_batch 重试后成功（B120 经验落地）。"""
+    import analyst.analyzer as analyzer
+    from analyst import deepseek_client
+    from collector import storage
+
+    fake_result = {"summary": "retried ok"}
+    calls = {"n": 0}
+
+    def flaky_chat(messages, temperature=0.3, max_tokens=4096, json_mode=True):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise deepseek_client.DeepSeekError("DeepSeek returned empty content")
+        return json.dumps(fake_result)
+
+    monkeypatch.setattr(deepseek_client, "is_configured", lambda: True)
+    monkeypatch.setattr(deepseek_client, "chat", flaky_chat)
+    monkeypatch.setattr(analyzer.time, "sleep", lambda s: None)
+
+    db_path = tmp_path / "a.db"
+    conn = storage.connect(str(db_path))
+    storage.init_schema(conn, "sql/schema.sql")
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO analysis_batches"
+        " (report_type, period_start, period_end, analysis_version, status)"
+        " VALUES ('daily', '2026-01-01T00:00:00', '2026-01-02T00:00:00', 'v1', 'pending')"
+    )
+    conn.commit()
+    batch_id = cur.lastrowid
+
+    context = {
+        "posts": [],
+        "statistics": {
+            "total_new_posts": 0, "grinder_related_posts": 0,
+            "grinder_ratio": 0.0, "geimori_mentions": 0,
+            "competitor_mentions": 0, "high_signal_topics": 0,
+            "alert_count": 0,
+        },
+        "signal_alerts": [],
+        "topic_trends": {},
+        "brand_trends": {"geimori": {"mentions": 0}},
+        "competitor_trends": {},
+        "top_posts": [],
+        "period_start": dt.datetime(2026, 1, 1, 0, 0, 0),
+        "period_end": dt.datetime(2026, 1, 2, 0, 0, 0),
+    }
+    result = analyze_batch(conn, batch_id, "daily", context)
+    assert result == fake_result
+    assert calls["n"] == 2
+    conn.close()
+
+
+def test_analyze_batch_gives_up_after_3_failures(tmp_path, monkeypatch):
+    """连续 3 次 DeepSeekError 时最终抛错，不伪造成功。"""
+    import pytest
+
+    import analyst.analyzer as analyzer
+    from analyst import deepseek_client
+    from collector import storage
+
+    def always_fail(messages, temperature=0.3, max_tokens=4096, json_mode=True):
+        raise deepseek_client.DeepSeekError("DeepSeek returned empty content")
+
+    monkeypatch.setattr(deepseek_client, "is_configured", lambda: True)
+    monkeypatch.setattr(deepseek_client, "chat", always_fail)
+    monkeypatch.setattr(analyzer.time, "sleep", lambda s: None)
+
+    db_path = tmp_path / "a.db"
+    conn = storage.connect(str(db_path))
+    storage.init_schema(conn, "sql/schema.sql")
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO analysis_batches"
+        " (report_type, period_start, period_end, analysis_version, status)"
+        " VALUES ('daily', '2026-01-01T00:00:00', '2026-01-02T00:00:00', 'v1', 'pending')"
+    )
+    conn.commit()
+    batch_id = cur.lastrowid
+
+    context = {"posts": [], "statistics": {
+        "total_new_posts": 0, "grinder_related_posts": 0, "grinder_ratio": 0.0,
+        "geimori_mentions": 0, "competitor_mentions": 0, "high_signal_topics": 0,
+        "alert_count": 0,
+    }, "signal_alerts": [], "topic_trends": {}, "brand_trends": {"geimori": {"mentions": 0}},
+        "competitor_trends": {}, "top_posts": []}
+    with pytest.raises(deepseek_client.DeepSeekError):
+        analyze_batch(conn, batch_id, "daily", context)
+    conn.close()

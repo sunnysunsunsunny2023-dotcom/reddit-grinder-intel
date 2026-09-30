@@ -88,9 +88,21 @@ def chat(
 
     try:
         data = resp.json()
-        return data["choices"][0]["message"]["content"]
+        content = data["choices"][0]["message"].get("content")
     except (ValueError, KeyError, IndexError) as exc:
         raise DeepSeekError(f"Invalid DeepSeek response: {resp.text[:500]}") from exc
+    if not content or not content.strip():
+        # DeepSeek 偶发空 content（json_mode 下也可能发生）；带 reasoning 信息便于排查
+        rc = (
+            data["choices"][0]["message"].get("reasoning_content")
+            if isinstance(data["choices"][0]["message"], dict)
+            else None
+        )
+        raise DeepSeekError(
+            "DeepSeek returned empty content"
+            + (f" (reasoning={rc[:200]!r})" if rc else "")
+        )
+    return content
 
 
 def parse_json_response(text: str) -> Dict[str, Any]:

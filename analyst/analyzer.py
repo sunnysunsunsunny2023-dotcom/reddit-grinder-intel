@@ -17,6 +17,7 @@ import datetime as dt
 import json as _json
 import logging
 import os
+import time
 from typing import Any, Dict, List, Optional
 
 from app import aggregate
@@ -382,8 +383,23 @@ def analyze_batch(
         messages = _build_daily_prompt(context)
 
     logger.info("Calling DeepSeek for batch %s (%s)", batch_id, report_type)
-    text = deepseek_client.chat(messages, temperature=0.3, max_tokens=4096, json_mode=True)
-    result = deepseek_client.parse_json_response(text)
+    last_err: Optional[Exception] = None
+    for attempt in range(1, 4):  # 空 content / 解析失败最多重试 2 次
+        try:
+            text = deepseek_client.chat(
+                messages, temperature=0.3, max_tokens=4096, json_mode=True
+            )
+            result = deepseek_client.parse_json_response(text)
+            break
+        except deepseek_client.DeepSeekError as exc:
+            last_err = exc
+            logger.warning(
+                "DeepSeek attempt %d/%d failed for batch %s: %s",
+                attempt, 3, batch_id, exc,
+            )
+            time.sleep(2 * attempt)
+    else:
+        raise last_err  # type: ignore[misc]
 
     cur = conn.cursor()
     cur.execute(
