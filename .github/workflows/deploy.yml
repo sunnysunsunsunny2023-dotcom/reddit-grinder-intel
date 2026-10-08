@@ -95,7 +95,7 @@ jobs:
             # 探活请求会导致 collector 的 RSS 拉取 429。让 collector 成为首个请求。
             sleep 2
             cd /opt/reddit-intel
-            sudo -u reddit-intel ./.venv/bin/python -m collector.scheduler --subreddits pourover espresso --limit 10 \
+            sudo -u reddit-intel ./.venv/bin/python -m collector.scheduler --subreddits pourover espresso --limit 10 --comments --search-keywords geimori mywirsh wirsh gu63 gu64 gu38 t38 \
               || echo "collector failed (大概率 Reddit 限速)；继续验证 API 环节"
             echo "==> 数据库行数"
             sudo -u reddit-intel ./.venv/bin/python deploy/verify_install.py
