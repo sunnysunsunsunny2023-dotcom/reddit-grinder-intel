@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reddit 磨豆机情报 · Daily Pulse — 2026-10-07</title>
+<style>
+  :root {
+    --canvas: #f6f0e4;
+    --surface: #fffdf7;
+    --surface-soft: #efe5d3;
+    --ink: #3b2a1b;
+    --ink-soft: #7a624c;
+    --line: #e2d5bf;
+    --accent: #a96a3b;
+    --accent-strong: #7c4a24;
+    --accent-ink: #fffaf1;
+    --status-spike: #b0402e;
+    --status-emerging: #c2701e;
+    --status-rising: #a96a3b;
+    --status-stable: #5f7a46;
+    --status-declining: #8a857c;
+    --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --pad-page: clamp(16px, 4vw, 40px);
+    --r-sm: 6px;
+    --r-md: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.55;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: var(--pad-page); }
+  header.hero {
+    background: linear-gradient(135deg, #3b2a1b 0%, #5a4026 100%);
+    color: var(--accent-ink);
+    border-radius: var(--r-md);
+    padding: clamp(20px, 4vw, 34px);
+    margin-bottom: 20px;
+  }
+  header.hero .kicker {
+    font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: #e8c89a; margin: 0 0 6px; font-family: var(--font-mono);
+  }
+  header.hero h1 { margin: 0 0 10px; font-size: clamp(24px, 4vw, 34px); line-height: 1.2; }
+  header.hero .one-liner {
+    font-size: clamp(15px, 2.2vw, 18px); color: #f5ead6; max-width: 64ch; margin: 0;
+  }
+  h2 { font-size: clamp(18px, 2.4vw, 22px); margin: 0 0 12px; color: var(--ink); }
+  section.panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: clamp(16px, 3vw, 24px);
+    margin-bottom: 18px;
+  }
+  .kpi-summary {
+    background: var(--surface-soft); border-radius: var(--r-sm);
+    padding: 10px 14px; margin: 0 0 16px; color: var(--ink-soft); font-size: 14px;
+  }
+  .kpi-grid {
+    display: grid; gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  .kpi-card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-top: 3px solid var(--accent); border-radius: var(--r-md);
+    padding: 14px 16px;
+  }
+  .kpi-label { font-size: 12px; color: var(--ink-soft); margin-bottom: 4px; }
+  .kpi-value { font-size: clamp(22px, 3vw, 30px); font-weight: 700; font-family: var(--font-mono); color: var(--accent-strong); }
+  .kpi-hint { font-size: 11px; color: var(--ink-soft); margin-top: 6px; }
+  .alert-card {
+    border: 1px solid var(--line); border-left: 4px solid var(--ac, var(--accent));
+    border-radius: var(--r-sm); padding: 12px 14px; margin-bottom: 12px;
+    background: var(--surface);
+  }
+  .alert-card:last-child { margin-bottom: 0; }
+  .alert-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .alert-head h3 { margin: 0; font-size: 16px; }
+  .alert-status {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+    color: var(--ac, var(--accent)); font-weight: 700;
+  }
+  .alert-card p { margin: 8px 0 6px; color: var(--ink); }
+  .alert-links a { color: var(--accent-strong); text-decoration: none; font-size: 13px; }
+  .alert-links a:hover { text-decoration: underline; }
+  .pill {
+    display: inline-block; background: var(--surface-soft); color: var(--ink-soft);
+    border-radius: 999px; padding: 2px 10px; font-size: 11px; font-family: var(--font-mono);
+  }
+  .pill-weak { background: #f3e9d0; color: #8a6d3b; }
+  .pill-cat { background: #e9f0dd; color: #5f7a46; }
+  .post-item {
+    display: grid; grid-template-columns: 34px 1fr; gap: 12px;
+    padding: 12px 0; border-bottom: 1px solid var(--line);
+  }
+  .post-item:last-child { border-bottom: 0; }
+  .post-rank {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent); color: var(--accent-ink);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+  }
+  .post-item h3 { margin: 0 0 4px; font-size: 15px; line-height: 1.35; }
+  .post-why { margin: 0 0 6px; color: var(--ink-soft); font-size: 13px; }
+  .post-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: var(--ink-soft); font-family: var(--font-mono); }
+  .post-link { color: var(--accent-strong); text-decoration: none; font-family: var(--font-body); }
+  .post-link:hover { text-decoration: underline; }
+  .geimori { border-left-width: 4px; }
+  .geimori-hit { border-left: 4px solid var(--status-emerging); background: #fbf3e6; }
+  .geimori-clear { border-left: 4px solid var(--status-stable); }
+  .geimori-detail { margin: 0; }
+  .action-item {
+    padding: 12px 0; border-bottom: 1px solid var(--line);
+  }
+  .action-item:last-child { border-bottom: 0; }
+  .action-item h3 { margin: 0 0 4px; font-size: 15px; }
+  .action-why { margin: 0 0 8px; color: var(--ink-soft); font-size: 13px; }
+  .action-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+  .empty {
+    background: var(--surface-soft); color: var(--ink-soft);
+    border-radius: var(--r-sm); padding: 14px 16px; font-size: 14px;
+  }
+  footer.foot {
+    color: var(--ink-soft); font-size: 12px; line-height: 1.6; margin-top: 8px;
+  }
+  .foot-meta { font-family: var(--font-mono); }
+  .foot-source { margin-top: 4px; }
+  a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px;
+  }
+  @media (max-width: 520px) {
+    .post-item { grid-template-columns: 26px 1fr; }
+    .post-rank { width: 24px; height: 24px; font-size: 11px; }
+  }
+  @media print {
+    body { background: #fff; }
+    .wrap { max-width: none; padding: 0; }
+    section.panel, .kpi-card, .alert-card, header.hero { break-inside: avoid; }
+    .post-link, .alert-links a { color: inherit; text-decoration: underline; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <p class="kicker">Reddit Grinder Intelligence · Daily Pulse</p>
+    <h1>磨豆机社区日报 — 2026-10-07</h1>
+    <p class="one-liner">过去24小时磨豆机相关讨论中，价格/价值话题出现显著峰值（25条提及，confidence high），主要受Prime Day促销帖驱动；同时1Zpresso J-Ultra/K-Ultra折扣帖在r/espresso和r/pourover同时出现，成为最具体的购买信号。</p>
+  </header>
+
+  <section class="panel" aria-label="今日 KPI">
+    <h2>今日 KPI</h2>
+    <p class="kpi-summary">total_new_posts=86, grinder_related_posts=39, grinder_ratio=0.4535, geimori_mentions=1, competitor_mentions=38, alert_count=2</p>
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">总新增帖</div><div class="kpi-value">86</div><div class="kpi-hint">过去 24h 抓取帖子总数</div></div>
+<div class="kpi-card"><div class="kpi-label">磨豆机相关</div><div class="kpi-value">39</div><div class="kpi-hint">命中磨豆机关键词的帖子</div></div>
+<div class="kpi-card"><div class="kpi-label">相关占比</div><div class="kpi-value">45.4%</div><div class="kpi-hint">磨豆机相关帖 / 总帖</div></div>
+<div class="kpi-card"><div class="kpi-label">Geimori 提及</div><div class="kpi-value">1</div><div class="kpi-hint">品牌名被讨论的次数</div></div>
+<div class="kpi-card"><div class="kpi-label">竞品提及</div><div class="kpi-value">38</div><div class="kpi-hint">竞品关键词命中数</div></div>
+<div class="kpi-card"><div class="kpi-label">高信号话题</div><div class="kpi-value">2</div><div class="kpi-hint">spike / emerging 级主题数</div></div>
+<div class="kpi-card"><div class="kpi-label">告警数</div><div class="kpi-value">2</div><div class="kpi-hint">本轮 signal alerts 数量</div></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="信号告警">
+    <h2>Signal Alerts</h2>
+    <article class="alert-card" style="--ac: var(--status-spike)"><div class="alert-head"><span class="alert-status">SPIKE</span><h3>price_value</h3><span class="pill">HIGH</span><span class="pill">25 帖</span></div><p>价格/价值话题24小时提及25次，远高于30日均值7.5（vs_30d=3.33），主要由Prime Day促销帖驱动，包括1Zpresso J-Ultra/K-Ultra折扣、xBloom Studio Prime Deal、以及多个预算导向的磨豆机求推荐帖。</p><div class="alert-links"><a href="https://www.reddit.com/r/espresso/comments/1wz61vu/usa_amazon_1zpresso_jultra_kultra_on_sale_for" target="_blank" rel="noopener noreferrer">原帖 ↗</a><a href="https://www.reddit.com/r/pourover/comments/1wz63dz/usa_amazon_1zpresso_jultra_kultra_on_sale_for" target="_blank" rel="noopener noreferrer">原帖 ↗</a><a href="https://www.reddit.com/r/pourover/comments/1wz6lts/xbloom_studio" target="_blank" rel="noopener noreferrer">原帖 ↗</a></div></article>
+<article class="alert-card" style="--ac: var(--status-spike)"><div class="alert-head"><span class="alert-status">SPIKE</span><h3>retention</h3><span class="pill">LOW</span><span class="pill">2 帖</span><span class="pill pill-weak">weak signal</span></div><p>残留（retention）话题24小时提及2次，30日均值仅0.57（vs_30d=3.53），但绝对样本极小，仅来自2个独立帖子，属于弱信号。</p><div class="alert-links"><a href="https://www.reddit.com/r/espresso/comments/1wzkyjx/sk40_t38plus_or_gu38" target="_blank" rel="noopener noreferrer">原帖 ↗</a></div></article>
+  </section>
+
+  <section class="panel" aria-label="热门帖子">
+    <h2>Top Posts</h2>
+    <article class="post-item"><div class="post-rank">1</div><div><h3>[USA - Amazon] 1Zpresso J-Ultra &amp; K-Ultra On Sale for Prime Days</h3><p class="post-why">直接展示竞品1Zpresso在Prime Day的激进定价（J-Ultra $169, K-Ultra $220），是当前价格敏感窗口中最具体的购买触发点，可能影响同价位手磨的购买决策。</p><div class="post-meta"><span>r/espresso / 0 score / 0 comments</span><a class="post-link" href="https://www.reddit.com/r/espresso/comments/1wz61vu/usa_amazon_1zpresso_jultra_kultra_on_sale_for" target="_blank" rel="noopener noreferrer">查看原帖 ↗</a></div></div></article>
+<article class="post-item"><div class="post-rank">2</div><div><h3>xBloom Studio</h3><p class="post-why">xBloom Studio Prime Deal $489，代表自动手冲/研磨一体机在促销季的竞争，与Geimori可能形成品类交叉关注。</p><div class="post-meta"><span>r/pourover / 0 score / 0 comments</span><a class="post-link" href="https://www.reddit.com/r/pourover/comments/1wz6lts/xbloom_studio" target="_blank" rel="noopener noreferrer">查看原帖 ↗</a></div></div></article>
+<article class="post-item"><div class="post-rank">3</div><div><h3>Good Consistent Grinder ? [$250]</h3><p class="post-why">典型预算$250求推荐帖，提及Fellow Opus 2、Breville Smart Grinder、Baratza Encore，反映中端磨豆机购买意向活跃。</p><div class="post-meta"><span>r/espresso / 0 score / 0 comments</span><a class="post-link" href="https://www.reddit.com/r/espresso/comments/1wzgo6d/good_consistent_grinder_250" target="_blank" rel="noopener noreferrer">查看原帖 ↗</a></div></div></article>
+<article class="post-item"><div class="post-rank">4</div><div><h3>[$200] - looking for a grinder on prime day</h3><p class="post-why">明确在Prime Day寻找$200磨豆机，说明促销季直接驱动磨豆机购买需求，是品牌曝光和转化的关键窗口。</p><div class="post-meta"><span>r/espresso / 0 score / 0 comments</span><a class="post-link" href="https://www.reddit.com/r/espresso/comments/1wzeu0l/200_looking_for_a_grinder_on_prime_day" target="_blank" rel="noopener noreferrer">查看原帖 ↗</a></div></div></article>
+<article class="post-item"><div class="post-rank">5</div><div><h3>Sk40, T38plus, or GU38?</h3><p class="post-why">用户对比三款预算电动锥磨，关注性价比、残留和做工，是竞品在入门电动磨市场的直接竞争信号。</p><div class="post-meta"><span>r/espresso / 0 score / 0 comments</span><a class="post-link" href="https://www.reddit.com/r/espresso/comments/1wzkyjx/sk40_t38plus_or_gu38" target="_blank" rel="noopener noreferrer">查看原帖 ↗</a></div></div></article>
+  </section>
+
+  <section class="panel geimori geimori-hit"><h2>Geimori Watch</h2><p class="geimori-detail">过去24小时有1次Geimori（Wirsh）提及，来自1个独立帖子，engagement=0。由于输入未提供具体帖子内容，无法判断情感和主题。建议：在Prime Day促销窗口期，可考虑在相关预算磨豆机讨论中增加品牌曝光或回应。</p></section>
+
+  <section class="panel" aria-label="今日行动">
+    <h2>Today Actions</h2>
+    <article class="action-item"><h3>在Prime Day相关磨豆机讨论中增加Geimori品牌曝光或促销信息</h3><p class="action-why">price_value话题出现高置信度峰值（25条提及，vs_30d=3.33），多个帖子明确在Prime Day寻找$200-$250磨豆机，竞品1Zpresso已推出折扣帖，是价格敏感窗口。</p><div class="action-badges"><span class="pill pill-cat">Ad</span><span class="pill">HIGH</span><span class="pill">25 帖</span></div></article>
+<article class="action-item"><h3>准备针对预算$200-$250磨豆机求推荐帖的内容素材（如对比指南、用户评价）</h3><p class="action-why">多个帖子（如1wzgo6d、1wzeu0l）直接求推荐$200-$250磨豆机，提及Fellow Opus 2、Baratza Encore等竞品，Geimori可借此机会进入用户考虑集。</p><div class="action-badges"><span class="pill pill-cat">Content</span><span class="pill">MEDIUM</span><span class="pill">3 帖</span></div></article>
+  </section>
+
+  <footer class="foot">
+    <div class="foot-meta">生成时间 2026-10-07 19:05:38 · Batch #13 · 窗口 2026-10-06T11:00 → 2026-10-07T11:05</div><div class="foot-source">数据来源：Reddit 公开社区帖子，由阿里云侧抓取与 LLM 分析生成，仅供内部情报参考；原帖链接均指向 reddit.com 真实来源。</div>
+  </footer>
+</div>
+</body>
+</html>

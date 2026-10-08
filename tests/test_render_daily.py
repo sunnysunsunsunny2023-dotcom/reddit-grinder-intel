@@ -122,6 +122,16 @@ def test_build_pulse_tolerates_missing_llm_fields():
     assert pulse["kpi"]["total_new_posts"] == 206
 
 
+def test_as_dict_parses_json_string():
+    from coze.render_daily import _as_dict
+
+    assert _as_dict({"a": 1}) == {"a": 1}
+    assert _as_dict('{"a": 1}') == {"a": 1}
+    assert _as_dict("not-json") == {}
+    assert _as_dict(None) == {}
+    assert _as_dict(42) == {}
+
+
 def test_build_pulse_normalizes_epoch_date():
     payload = _payload()
     payload["period"] = {"start": 1780200000, "end": 1780286399}

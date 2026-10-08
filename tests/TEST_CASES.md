@@ -99,3 +99,18 @@
   - `tests/test_collector.py::test_search_backfill_inserts_and_dedupes`
   - `tests/test_collector.py::test_comments_curl_fallback`
 - **版本**：v0.2.5
+
+### RGI-011：搜索补抓线上失败 — search RSS 429/JSON 403 + 返回值类型 bug
+- **现象**：v0.2.5 CI full verification 中 `--search-keywords` 全部失败：search RSS 429、search JSON 403；且 `run_once` 抛 `TypeError: can only concatenate list (not "int") to list`，采集器整体退出，评论抓取未执行
+- **根因**：
+  1. Reddit 对 `/search/` 端点限速严格（实测比 `/new/` 严）：7 个关键词连续请求全部命中 429；且 prefer_rss 分支 RSS 失败后 fallback JSON，JSON 已知 403，白白多打 7 个请求污染限速窗口
+  2. `_run_search_backfill()` 返回 `(新帖数量 int, 找到数量 int)`，但 `run_once` 按 `(新帖列表, int)` 解包，`new_posts + search_new_posts` 变成 `list + int` 直接 TypeError
+- **修复**：
+  - `collector/scheduler.py`：`_run_search_backfill()` 把全部关键词合并为单个 OR 查询（`q=geimori OR mywirsh OR ...`），每 subreddit 只打 1 次搜索请求，返回 `(新帖原始 dict 列表, 搜索到的帖子总数)`；`run_once` 解包列表、`search_new = len(search_new_posts)`，评论抓取直接复用 `new_posts + search_new_posts`
+  - `collector/reddit_fetcher.py`：prefer_rss 时 search RSS 失败直接抛错、不再 fallback JSON（避免 403 污染限速窗口）；`_fetch_search_rss()` 对 429 退避 20s 重试一次
+- **回归用例**：
+  - `tests/test_collector.py::test_search_backfill_inserts_and_dedupes`（改：OR 合并 + 返回列表断言）
+  - `tests/test_collector.py::test_search_backfill_failure_returns_empty_list`（新增：搜索失败不阻塞整体）
+  - `tests/test_collector.py::test_search_posts_rss_fail_no_json_fallback`（新增：prefer_rss 失败不再 fallback JSON）
+  - `tests/test_collector.py::test_search_rss_429_backoff_retry`（新增：429 退避重试）
+- **版本**：v0.2.6

@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reddit 磨豆机情报 · Daily Pulse — 2026-10-01</title>
+<style>
+  :root {
+    --canvas: #f6f0e4;
+    --surface: #fffdf7;
+    --surface-soft: #efe5d3;
+    --ink: #3b2a1b;
+    --ink-soft: #7a624c;
+    --line: #e2d5bf;
+    --accent: #a96a3b;
+    --accent-strong: #7c4a24;
+    --accent-ink: #fffaf1;
+    --status-spike: #b0402e;
+    --status-emerging: #c2701e;
+    --status-rising: #a96a3b;
+    --status-stable: #5f7a46;
+    --status-declining: #8a857c;
+    --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --pad-page: clamp(16px, 4vw, 40px);
+    --r-sm: 6px;
+    --r-md: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.55;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: var(--pad-page); }
+  header.hero {
+    background: linear-gradient(135deg, #3b2a1b 0%, #5a4026 100%);
+    color: var(--accent-ink);
+    border-radius: var(--r-md);
+    padding: clamp(20px, 4vw, 34px);
+    margin-bottom: 20px;
+  }
+  header.hero .kicker {
+    font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: #e8c89a; margin: 0 0 6px; font-family: var(--font-mono);
+  }
+  header.hero h1 { margin: 0 0 10px; font-size: clamp(24px, 4vw, 34px); line-height: 1.2; }
+  header.hero .one-liner {
+    font-size: clamp(15px, 2.2vw, 18px); color: #f5ead6; max-width: 64ch; margin: 0;
+  }
+  h2 { font-size: clamp(18px, 2.4vw, 22px); margin: 0 0 12px; color: var(--ink); }
+  section.panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: clamp(16px, 3vw, 24px);
+    margin-bottom: 18px;
+  }
+  .kpi-summary {
+    background: var(--surface-soft); border-radius: var(--r-sm);
+    padding: 10px 14px; margin: 0 0 16px; color: var(--ink-soft); font-size: 14px;
+  }
+  .kpi-grid {
+    display: grid; gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  .kpi-card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-top: 3px solid var(--accent); border-radius: var(--r-md);
+    padding: 14px 16px;
+  }
+  .kpi-label { font-size: 12px; color: var(--ink-soft); margin-bottom: 4px; }
+  .kpi-value { font-size: clamp(22px, 3vw, 30px); font-weight: 700; font-family: var(--font-mono); color: var(--accent-strong); }
+  .kpi-hint { font-size: 11px; color: var(--ink-soft); margin-top: 6px; }
+  .alert-card {
+    border: 1px solid var(--line); border-left: 4px solid var(--ac, var(--accent));
+    border-radius: var(--r-sm); padding: 12px 14px; margin-bottom: 12px;
+    background: var(--surface);
+  }
+  .alert-card:last-child { margin-bottom: 0; }
+  .alert-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .alert-head h3 { margin: 0; font-size: 16px; }
+  .alert-status {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+    color: var(--ac, var(--accent)); font-weight: 700;
+  }
+  .alert-card p { margin: 8px 0 6px; color: var(--ink); }
+  .alert-links a { color: var(--accent-strong); text-decoration: none; font-size: 13px; }
+  .alert-links a:hover { text-decoration: underline; }
+  .pill {
+    display: inline-block; background: var(--surface-soft); color: var(--ink-soft);
+    border-radius: 999px; padding: 2px 10px; font-size: 11px; font-family: var(--font-mono);
+  }
+  .pill-weak { background: #f3e9d0; color: #8a6d3b; }
+  .pill-cat { background: #e9f0dd; color: #5f7a46; }
+  .post-item {
+    display: grid; grid-template-columns: 34px 1fr; gap: 12px;
+    padding: 12px 0; border-bottom: 1px solid var(--line);
+  }
+  .post-item:last-child { border-bottom: 0; }
+  .post-rank {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent); color: var(--accent-ink);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+  }
+  .post-item h3 { margin: 0 0 4px; font-size: 15px; line-height: 1.35; }
+  .post-why { margin: 0 0 6px; color: var(--ink-soft); font-size: 13px; }
+  .post-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: var(--ink-soft); font-family: var(--font-mono); }
+  .post-link { color: var(--accent-strong); text-decoration: none; font-family: var(--font-body); }
+  .post-link:hover { text-decoration: underline; }
+  .geimori { border-left-width: 4px; }
+  .geimori-hit { border-left: 4px solid var(--status-emerging); background: #fbf3e6; }
+  .geimori-clear { border-left: 4px solid var(--status-stable); }
+  .geimori-detail { margin: 0; }
+  .action-item {
+    padding: 12px 0; border-bottom: 1px solid var(--line);
+  }
+  .action-item:last-child { border-bottom: 0; }
+  .action-item h3 { margin: 0 0 4px; font-size: 15px; }
+  .action-why { margin: 0 0 8px; color: var(--ink-soft); font-size: 13px; }
+  .action-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+  .empty {
+    background: var(--surface-soft); color: var(--ink-soft);
+    border-radius: var(--r-sm); padding: 14px 16px; font-size: 14px;
+  }
+  footer.foot {
+    color: var(--ink-soft); font-size: 12px; line-height: 1.6; margin-top: 8px;
+  }
+  .foot-meta { font-family: var(--font-mono); }
+  .foot-source { margin-top: 4px; }
+  a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px;
+  }
+  @media (max-width: 520px) {
+    .post-item { grid-template-columns: 26px 1fr; }
+    .post-rank { width: 24px; height: 24px; font-size: 11px; }
+  }
+  @media print {
+    body { background: #fff; }
+    .wrap { max-width: none; padding: 0; }
+    section.panel, .kpi-card, .alert-card, header.hero { break-inside: avoid; }
+    .post-link, .alert-links a { color: inherit; text-decoration: underline; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <p class="kicker">Reddit Grinder Intelligence · Daily Pulse</p>
+    <h1>磨豆机社区日报 — 2026-10-01</h1>
+    <p class="one-liner">过去24小时磨豆机相关讨论中，espresso（17帖）与price_value（14帖）双双出现高置信度spike，workflow（13帖）与pourover（10帖）同步走高；Geimori仅1次提及，来自一篇询问GU63真实口碑的帖子。</p>
+  </header>
+
+  <section class="panel" aria-label="今日 KPI">
+    <h2>今日 KPI</h2>
+    <p class="kpi-summary">total_new_posts=43, grinder_related_posts=19, grinder_ratio=0.4419, geimori_mentions=1, competitor_mentions=17, alert_count=5</p>
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">总新增帖</div><div class="kpi-value">42</div><div class="kpi-hint">过去 24h 抓取帖子总数</div></div>
+<div class="kpi-card"><div class="kpi-label">磨豆机相关</div><div class="kpi-value">19</div><div class="kpi-hint">命中磨豆机关键词的帖子</div></div>
+<div class="kpi-card"><div class="kpi-label">相关占比</div><div class="kpi-value">45.2%</div><div class="kpi-hint">磨豆机相关帖 / 总帖</div></div>
+<div class="kpi-card"><div class="kpi-label">Geimori 提及</div><div class="kpi-value">1</div><div class="kpi-hint">品牌名被讨论的次数</div></div>
+<div class="kpi-card"><div class="kpi-label">竞品提及</div><div class="kpi-value">16</div><div class="kpi-hint">竞品关键词命中数</div></div>
+<div class="kpi-card"><div class="kpi-label">高信号话题</div><div class="kpi-value">5</div><div class="kpi-hint">spike / emerging 级主题数</div></div>
+<div class="kpi-card"><div class="kpi-label">告警数</div><div class="kpi-value">5</div><div class="kpi-hint">本轮 signal alerts 数量</div></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="信号告警">
+    <h2>Signal Alerts</h2>
+    <article class="alert-card" style="--ac: var(--status-spike)"><div class="alert-head"><span class="alert-status">SPIKE</span><h3>espresso</h3><span class="pill">HIGH</span><span class="pill">17 帖</span></div><p>espresso相关讨论24h内出现17次提及（17个独立帖），远高于7日均值13.71和30日均值3.2。多个帖子围绕入门机选择、磨豆机升级与萃取问题展开，如&#x27;My first espresso machine needing advice on which one to get [$250-$500]&#x27;和&#x27;DF64 gen 2 vs Eureka mignon zero 55s [$470]&#x27;。</p><div class="alert-links"><a href="https://www.reddit.com/r/espresso/comments/1wu5zrl/my_first_espresso_machine_needing_advice_on_which" target="_blank" rel="noopener noreferrer">原帖 ↗</a><a href="https://www.reddit.com/r/espresso/comments/1wtzcao/df64_gen_2_vs_eureka_mignon_zero_55s_470" target="_blank" rel="noopener noreferrer">原帖 ↗</a></div></article>
+<article class="alert-card" style="--ac: var(--status-spike)"><div class="alert-head"><span class="alert-status">SPIKE</span><h3>price_value</h3><span class="pill">HIGH</span><span class="pill">14 帖</span></div><p>价格/性价比讨论24h内14次提及（14个独立帖），高于7日均值9.29和30日均值2.17。多个帖子明确标出预算区间，如&#x27;First machine, basic or endgame? [$3000]&#x27;、&#x27;Upgrade for about [€2000]&#x27;和&#x27;Breville Barista Pro for $629 — should I go for it?&#x27;。</p><div class="alert-links"><a href="https://www.reddit.com/r/espresso/comments/1wu7ke6/first_machine_basic_or_endgame_3000" target="_blank" rel="noopener noreferrer">原帖 ↗</a><a href="https://www.reddit.com/r/espresso/comments/1wu2oya/upgrade_for_about_2000" target="_blank" rel="noopener noreferrer">原帖 ↗</a></div></article>
+<article class="alert-card" style="--ac: var(--status-spike)"><div class="alert-head"><span class="alert-status">SPIKE</span><h3>workflow</h3><span class="pill">MEDIUM</span><span class="pill">13 帖</span></div><p>工作流相关讨论24h内13次提及（13个独立帖），高于7日均值11.0和30日均值2.57。帖子涉及通勤携带、旅行咖啡设置和日常流程优化，如&#x27;Which drinks you carry to work&#x27;和&#x27;Coffee while travelling&#x27;。</p><div class="alert-links"><a href="https://www.reddit.com/r/espresso/comments/1wtybns/which_drinks_you_carry_to_work" target="_blank" rel="noopener noreferrer">原帖 ↗</a><a href="https://www.reddit.com/r/espresso/comments/1wtwfvk/coffee_while_travelling" target="_blank" rel="noopener noreferrer">原帖 ↗</a></div></article>
+<article class="alert-card" style="--ac: var(--status-spike)"><div class="alert-head"><span class="alert-status">SPIKE</span><h3>pourover</h3><span class="pill">MEDIUM</span><span class="pill">10 帖</span></div><p>手冲相关讨论24h内10次提及（10个独立帖），高于7日均值12.14和30日均值2.83。帖子涵盖滤杯选择、水质和研磨设置，如&#x27;Kalita Wave&#x27;和&#x27;Water Crafting&#x27;。</p><div class="alert-links"><a href="https://www.reddit.com/r/pourover/comments/1wu6gnv/kalita_wave" target="_blank" rel="noopener noreferrer">原帖 ↗</a><a href="https://www.reddit.com/r/pourover/comments/1wu5xk7/water_crafting" target="_blank" rel="noopener noreferrer">原帖 ↗</a></div></article>
+<article class="alert-card" style="--ac: var(--status-spike)"><div class="alert-head"><span class="alert-status">SPIKE</span><h3>noise</h3><span class="pill">MEDIUM</span><span class="pill">4 帖</span><span class="pill pill-weak">weak signal</span></div><p>噪音相关讨论24h内4次提及（4个独立帖），高于7日均值1.57和30日均值0.37。但engagement均为0，且样本较小，需谨慎解读。</p><div class="alert-links"><a href="https://www.reddit.com/r/espresso/comments/1wtw6b2/is_it_normal_to_hear_this_click_sound_one_time_2" target="_blank" rel="noopener noreferrer">原帖 ↗</a><a href="https://www.reddit.com/r/espresso/comments/1wtupcn/is_it_normal_to_hear_a_sound_2_hours_after_using" target="_blank" rel="noopener noreferrer">原帖 ↗</a></div></article>
+<article class="alert-card" style="--ac: var(--status-spike)"><div class="alert-head"><span class="alert-status">SPIKE</span><h3>static</h3><span class="pill">LOW</span><span class="pill">2 帖</span><span class="pill pill-weak">weak signal</span></div><p>静电相关讨论24h内2次提及（2个独立帖），高于7日均值0.57和30日均值0.13。但仅2帖且engagement为0，属于弱信号。</p><div class="alert-links"><a href="https://www.reddit.com/r/espresso/comments/1wu9cja/dc54_the_conical_version_of_the_df54" target="_blank" rel="noopener noreferrer">原帖 ↗</a></div></article>
+<article class="alert-card" style="--ac: var(--status-spike)"><div class="alert-head"><span class="alert-status">SPIKE</span><h3>retention</h3><span class="pill">LOW</span><span class="pill">2 帖</span><span class="pill pill-weak">weak signal</span></div><p>残粉相关讨论24h内2次提及（2个独立帖），高于7日均值0.86和30日均值0.2。但仅2帖且engagement为0，属于弱信号。</p><div class="alert-links"><a href="https://www.reddit.com/r/espresso/comments/1wu3vvr/geimori_gu63_whats_the_real_story" target="_blank" rel="noopener noreferrer">原帖 ↗</a></div></article>
+  </section>
+
+  <section class="panel" aria-label="热门帖子">
+    <h2>Top Posts</h2>
+    <article class="post-item"><div class="post-rank">1</div><div><h3>DC54, the conical version of the DF54</h3><p class="post-why">DF系列新锥形版本发布，提及0.1g残粉和磁吸接粉杯，价格与Baratza ESP相近，可能影响入门级磨豆机竞争格局。</p><div class="post-meta"><span>r/espresso / 0 score / 0 comments</span><a class="post-link" href="https://www.reddit.com/r/espresso/comments/1wu9cja/dc54_the_conical_version_of_the_df54" target="_blank" rel="noopener noreferrer">查看原帖 ↗</a></div></div></article>
+<article class="post-item"><div class="post-rank">2</div><div><h3>Zerno Z2 Arrived!</h3><p class="post-why">高端磨豆机Zerno Z2开箱，等待近10个月，反映高端市场交付周期和用户期待。</p><div class="post-meta"><span>r/espresso / 0 score / 0 comments</span><a class="post-link" href="https://www.reddit.com/r/espresso/comments/1wu975w/zerno_z2_arrived" target="_blank" rel="noopener noreferrer">查看原帖 ↗</a></div></div></article>
+<article class="post-item"><div class="post-rank">3</div><div><h3>Geimori GU63 what&#x27;s the real story?</h3><p class="post-why">唯一Geimori提及，用户因Fellow Opus残粉问题（3-5g）考虑GU63，询问真实口碑，是品牌口碑建设的直接机会。</p><div class="post-meta"><span>r/espresso / 0 score / 0 comments</span><a class="post-link" href="https://www.reddit.com/r/espresso/comments/1wu3vvr/geimori_gu63_whats_the_real_story" target="_blank" rel="noopener noreferrer">查看原帖 ↗</a></div></div></article>
+<article class="post-item"><div class="post-rank">4</div><div><h3>Mazzer Philos or Niche Zero [no budget]</h3><p class="post-why">高端磨豆机对比讨论，涉及Mazzer和Niche，反映用户对高端单剂量磨豆机的持续兴趣。</p><div class="post-meta"><span>r/espresso / 0 score / 0 comments</span><a class="post-link" href="https://www.reddit.com/r/espresso/comments/1wu4srm/mazzer_philos_or_niche_zero_no_budget" target="_blank" rel="noopener noreferrer">查看原帖 ↗</a></div></div></article>
+<article class="post-item"><div class="post-rank">5</div><div><h3>Is the Niche Zero still relevant in 2026? [500€]</h3><p class="post-why">Niche Zero在2026年的相关性讨论，涉及产品生命周期和竞争定位，对竞品分析有参考价值。</p><div class="post-meta"><span>r/espresso / 0 score / 0 comments</span><a class="post-link" href="https://www.reddit.com/r/espresso/comments/1wu2qsd/is_the_niche_zero_still_relevant_in_2026_500" target="_blank" rel="noopener noreferrer">查看原帖 ↗</a></div></div></article>
+  </section>
+
+  <section class="panel geimori geimori-hit"><h2>Geimori Watch</h2><p class="geimori-detail">1次提及，来自r/espresso帖子&#x27;Geimori GU63 what&#x27;s the real story?&#x27;。用户因Fellow Opus gen1残粉严重（每次3-5g）而考虑换磨豆机，短名单包括Varia VS4、DF54和Geimori GU63，但表示对GU63&#x27;只是粗略看了看&#x27;，并直接询问&#x27;真实故事是什么&#x27;。情感中性偏谨慎，主题为产品口碑与残粉问题。建议回应：在帖子中提供GU63的残粉实测数据、与Opus/DF54的对比信息，并邀请真实用户分享体验，以建立信任。</p></section>
+
+  <section class="panel" aria-label="今日行动">
+    <h2>Today Actions</h2>
+    <article class="action-item"><h3>在Geimori GU63相关帖子中提供官方残粉数据和对比信息</h3><p class="action-why">唯一Geimori提及帖子直接询问GU63真实口碑，且用户因竞品残粉问题而考虑换机，是精准的转化机会。</p><div class="action-badges"><span class="pill pill-cat">Community</span><span class="pill">MEDIUM</span><span class="pill">1 帖</span></div></article>
+<article class="action-item"><h3>关注espresso和price_value高热度讨论，准备入门级磨豆机内容</h3><p class="action-why">espresso（17帖）和price_value（14帖）均为高置信度spike，大量帖子涉及预算和入门选择，适合植入产品对比内容。</p><div class="action-badges"><span class="pill pill-cat">Content</span><span class="pill">HIGH</span><span class="pill">31 帖</span></div></article>
+  </section>
+
+  <footer class="foot">
+    <div class="foot-meta">生成时间 2026-10-01 11:20:32 · Batch #6 · 窗口 2026-09-30T03:00 → 2026-10-01T03:20</div><div class="foot-source">数据来源：Reddit 公开社区帖子，由阿里云侧抓取与 LLM 分析生成，仅供内部情报参考；原帖链接均指向 reddit.com 真实来源。</div>
+  </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reddit 磨豆机情报 · Daily Pulse — 2026-10-05</title>
+<style>
+  :root {
+    --canvas: #f6f0e4;
+    --surface: #fffdf7;
+    --surface-soft: #efe5d3;
+    --ink: #3b2a1b;
+    --ink-soft: #7a624c;
+    --line: #e2d5bf;
+    --accent: #a96a3b;
+    --accent-strong: #7c4a24;
+    --accent-ink: #fffaf1;
+    --status-spike: #b0402e;
+    --status-emerging: #c2701e;
+    --status-rising: #a96a3b;
+    --status-stable: #5f7a46;
+    --status-declining: #8a857c;
+    --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --pad-page: clamp(16px, 4vw, 40px);
+    --r-sm: 6px;
+    --r-md: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.55;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: var(--pad-page); }
+  header.hero {
+    background: linear-gradient(135deg, #3b2a1b 0%, #5a4026 100%);
+    color: var(--accent-ink);
+    border-radius: var(--r-md);
+    padding: clamp(20px, 4vw, 34px);
+    margin-bottom: 20px;
+  }
+  header.hero .kicker {
+    font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: #e8c89a; margin: 0 0 6px; font-family: var(--font-mono);
+  }
+  header.hero h1 { margin: 0 0 10px; font-size: clamp(24px, 4vw, 34px); line-height: 1.2; }
+  header.hero .one-liner {
+    font-size: clamp(15px, 2.2vw, 18px); color: #f5ead6; max-width: 64ch; margin: 0;
+  }
+  h2 { font-size: clamp(18px, 2.4vw, 22px); margin: 0 0 12px; color: var(--ink); }
+  section.panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: clamp(16px, 3vw, 24px);
+    margin-bottom: 18px;
+  }
+  .kpi-summary {
+    background: var(--surface-soft); border-radius: var(--r-sm);
+    padding: 10px 14px; margin: 0 0 16px; color: var(--ink-soft); font-size: 14px;
+  }
+  .kpi-grid {
+    display: grid; gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  .kpi-card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-top: 3px solid var(--accent); border-radius: var(--r-md);
+    padding: 14px 16px;
+  }
+  .kpi-label { font-size: 12px; color: var(--ink-soft); margin-bottom: 4px; }
+  .kpi-value { font-size: clamp(22px, 3vw, 30px); font-weight: 700; font-family: var(--font-mono); color: var(--accent-strong); }
+  .kpi-hint { font-size: 11px; color: var(--ink-soft); margin-top: 6px; }
+  .alert-card {
+    border: 1px solid var(--line); border-left: 4px solid var(--ac, var(--accent));
+    border-radius: var(--r-sm); padding: 12px 14px; margin-bottom: 12px;
+    background: var(--surface);
+  }
+  .alert-card:last-child { margin-bottom: 0; }
+  .alert-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .alert-head h3 { margin: 0; font-size: 16px; }
+  .alert-status {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+    color: var(--ac, var(--accent)); font-weight: 700;
+  }
+  .alert-card p { margin: 8px 0 6px; color: var(--ink); }
+  .alert-links a { color: var(--accent-strong); text-decoration: none; font-size: 13px; }
+  .alert-links a:hover { text-decoration: underline; }
+  .pill {
+    display: inline-block; background: var(--surface-soft); color: var(--ink-soft);
+    border-radius: 999px; padding: 2px 10px; font-size: 11px; font-family: var(--font-mono);
+  }
+  .pill-weak { background: #f3e9d0; color: #8a6d3b; }
+  .pill-cat { background: #e9f0dd; color: #5f7a46; }
+  .post-item {
+    display: grid; grid-template-columns: 34px 1fr; gap: 12px;
+    padding: 12px 0; border-bottom: 1px solid var(--line);
+  }
+  .post-item:last-child { border-bottom: 0; }
+  .post-rank {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent); color: var(--accent-ink);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+  }
+  .post-item h3 { margin: 0 0 4px; font-size: 15px; line-height: 1.35; }
+  .post-why { margin: 0 0 6px; color: var(--ink-soft); font-size: 13px; }
+  .post-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: var(--ink-soft); font-family: var(--font-mono); }
+  .post-link { color: var(--accent-strong); text-decoration: none; font-family: var(--font-body); }
+  .post-link:hover { text-decoration: underline; }
+  .geimori { border-left-width: 4px; }
+  .geimori-hit { border-left: 4px solid var(--status-emerging); background: #fbf3e6; }
+  .geimori-clear { border-left: 4px solid var(--status-stable); }
+  .geimori-detail { margin: 0; }
+  .action-item {
+    padding: 12px 0; border-bottom: 1px solid var(--line);
+  }
+  .action-item:last-child { border-bottom: 0; }
+  .action-item h3 { margin: 0 0 4px; font-size: 15px; }
+  .action-why { margin: 0 0 8px; color: var(--ink-soft); font-size: 13px; }
+  .action-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+  .empty {
+    background: var(--surface-soft); color: var(--ink-soft);
+    border-radius: var(--r-sm); padding: 14px 16px; font-size: 14px;
+  }
+  footer.foot {
+    color: var(--ink-soft); font-size: 12px; line-height: 1.6; margin-top: 8px;
+  }
+  .foot-meta { font-family: var(--font-mono); }
+  .foot-source { margin-top: 4px; }
+  a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px;
+  }
+  @media (max-width: 520px) {
+    .post-item { grid-template-columns: 26px 1fr; }
+    .post-rank { width: 24px; height: 24px; font-size: 11px; }
+  }
+  @media print {
+    body { background: #fff; }
+    .wrap { max-width: none; padding: 0; }
+    section.panel, .kpi-card, .alert-card, header.hero { break-inside: avoid; }
+    .post-link, .alert-links a { color: inherit; text-decoration: underline; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <p class="kicker">Reddit Grinder Intelligence · Daily Pulse</p>
+    <h1>磨豆机社区日报 — 2026-10-05</h1>
+    <p class="one-liner">过去24小时磨豆机相关讨论集中在 grind_speed（20帖）和 grind_consistency（12帖）两个高置信度尖峰主题上，但 Geimori 零提及；社区同时出现 workflow、espresso、pourover 等广泛尖峰，样本以求助与选购为主。</p>
+  </header>
+
+  <section class="panel" aria-label="今日 KPI">
+    <h2>今日 KPI</h2>
+    <p class="kpi-summary">total_new_posts=94, grinder_related_posts=31, grinder_ratio=0.3298, geimori_mentions=0, competitor_mentions=37, alert_count=5</p>
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">总新增帖</div><div class="kpi-value">94</div><div class="kpi-hint">过去 24h 抓取帖子总数</div></div>
+<div class="kpi-card"><div class="kpi-label">磨豆机相关</div><div class="kpi-value">31</div><div class="kpi-hint">命中磨豆机关键词的帖子</div></div>
+<div class="kpi-card"><div class="kpi-label">相关占比</div><div class="kpi-value">33.0%</div><div class="kpi-hint">磨豆机相关帖 / 总帖</div></div>
+<div class="kpi-card"><div class="kpi-label">Geimori 提及</div><div class="kpi-value">0</div><div class="kpi-hint">品牌名被讨论的次数</div></div>
+<div class="kpi-card"><div class="kpi-label">竞品提及</div><div class="kpi-value">37</div><div class="kpi-hint">竞品关键词命中数</div></div>
+<div class="kpi-card"><div class="kpi-label">高信号话题</div><div class="kpi-value">5</div><div class="kpi-hint">spike / emerging 级主题数</div></div>
+<div class="kpi-card"><div class="kpi-label">告警数</div><div class="kpi-value">5</div><div class="kpi-hint">本轮 signal alerts 数量</div></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="信号告警">
+    <h2>Signal Alerts</h2>
+    <article class="alert-card" style="--ac: var(--status-spike)"><div class="alert-head"><span class="alert-status">SPIKE</span><h3>grind_speed</h3><span class="pill">HIGH</span><span class="pill">20 帖</span></div><p>24小时内 grind_speed 提及20次（avg_7d=15.29, avg_30d=3.83, vs_30d=5.22），为今日最高置信度尖峰之一。相关帖子包括用户抱怨手磨效率并自制 Kingrinder 电动适配器（&#x27;Got tired of hand grinding… drew this up in a weekend&#x27;），以及多篇选购/调试帖间接涉及研磨速度。</p><div class="alert-links"><a href="https://www.reddit.com/r/espresso/comments/1wxmgws/automatic_kingrinder_adapter" target="_blank" rel="noopener noreferrer">原帖 ↗</a><a href="https://www.reddit.com/r/espresso/comments/1wxt838/baratza_turin_or_varia_300_ish" target="_blank" rel="noopener noreferrer">原帖 ↗</a></div></article>
+<article class="alert-card" style="--ac: var(--status-spike)"><div class="alert-head"><span class="alert-status">SPIKE</span><h3>grind_consistency</h3><span class="pill">HIGH</span><span class="pill">12 帖</span></div><p>grind_consistency 提及12次（avg_7d=8.43, avg_30d=2.07, vs_30d=5.81），高置信度尖峰。帖子如 &#x27;How do you keep back-to-back brew comparisons fair?&#x27; 直接讨论研磨一致性对比较冲煮的影响，&#x27;is a dark roast shot suppose to taste bad?&#x27; 也涉及研磨细度调整。</p><div class="alert-links"><a href="https://www.reddit.com/r/pourover/comments/1wxygcb/how_do_you_keep_backtoback_brew_comparisons_fair" target="_blank" rel="noopener noreferrer">原帖 ↗</a><a href="https://www.reddit.com/r/espresso/comments/1wxyzi8/is_a_dark_roast_shot_suppose_to_taste_bad" target="_blank" rel="noopener noreferrer">原帖 ↗</a></div></article>
+<article class="alert-card" style="--ac: var(--status-spike)"><div class="alert-head"><span class="alert-status">SPIKE</span><h3>burr</h3><span class="pill">MEDIUM</span><span class="pill">8 帖</span></div><p>burr 提及8次（avg_7d=6.86, avg_30d=1.7, vs_30d=4.71），中置信度尖峰。相关帖子包括 &#x27;Buying spare parts in France [Baratza Encore ESP]&#x27; 提到 burr holder 损坏，以及 &#x27;Why is there no premium CONICAL grinder with a hopper and GbW?&#x27; 讨论锥形刀盘产品缺口。</p><div class="alert-links"><a href="https://www.reddit.com/r/espresso/comments/1wxwlxu/buying_spare_parts_in_france_baratza_encore_esp" target="_blank" rel="noopener noreferrer">原帖 ↗</a><a href="https://www.reddit.com/r/espresso/comments/1wxozde/why_is_there_no_premium_conical_grinder_with_a" target="_blank" rel="noopener noreferrer">原帖 ↗</a></div></article>
+<article class="alert-card" style="--ac: var(--status-spike)"><div class="alert-head"><span class="alert-status">SPIKE</span><h3>noise</h3><span class="pill">MEDIUM</span><span class="pill">6 帖</span></div><p>noise 提及6次（avg_7d=4.14, avg_30d=1.07, vs_30d=5.62），中置信度尖峰。帖子如 &#x27;Pump getting louder over time, rattling noise and shaky pressure needle. Normal? [Profitec Drive]&#x27; 直接讨论机器噪音问题。</p><div class="alert-links"><a href="https://www.reddit.com/r/espresso/comments/1wxncf4/pump_getting_louder_over_time_rattling_noise_and" target="_blank" rel="noopener noreferrer">原帖 ↗</a></div></article>
+<article class="alert-card" style="--ac: var(--status-spike)"><div class="alert-head"><span class="alert-status">SPIKE</span><h3>static</h3><span class="pill">LOW</span><span class="pill">2 帖</span><span class="pill pill-weak">weak signal</span></div><p>static 提及2次（avg_7d=1.71, avg_30d=0.4, vs_30d=5.0），低置信度尖峰，样本极小。未在 top posts 中观察到直接相关的高互动帖子。</p><div class="alert-links"></div></article>
+  </section>
+
+  <section class="panel" aria-label="热门帖子">
+    <h2>Top Posts</h2>
+    <article class="post-item"><div class="post-rank">1</div><div><h3>Is the Breville Bambino worth the extra buck over the Casabrew CM5418? [$169-$299]</h3><p class="post-why">选购入门意式机时价格与价值权衡的典型讨论，涉及预算敏感用户，可能间接影响磨豆机搭配需求。</p><div class="post-meta"><span>r/espresso / 0 score / 0 comments</span><a class="post-link" href="https://www.reddit.com/r/espresso/comments/1wxzjek/is_the_breville_bambino_worth_the_extra_buck_over" target="_blank" rel="noopener noreferrer">查看原帖 ↗</a></div></div></article>
+<article class="post-item"><div class="post-rank">2</div><div><h3>How do you keep back-to-back brew comparisons fair?</h3><p class="post-why">直接讨论研磨一致性对比较冲煮的影响，提及 LAGOM CASA 磨豆机，是 grind_consistency 尖峰的代表帖。</p><div class="post-meta"><span>r/pourover / 0 score / 0 comments</span><a class="post-link" href="https://www.reddit.com/r/pourover/comments/1wxygcb/how_do_you_keep_backtoback_brew_comparisons_fair" target="_blank" rel="noopener noreferrer">查看原帖 ↗</a></div></div></article>
+<article class="post-item"><div class="post-rank">3</div><div><h3>Automatic Kingrinder Adapter!</h3><p class="post-why">用户自制电动适配器解决手磨速度问题，反映 grind_speed 痛点，并涉及 Kingrinder 品牌。</p><div class="post-meta"><span>r/espresso / 0 score / 0 comments</span><a class="post-link" href="https://www.reddit.com/r/espresso/comments/1wxmgws/automatic_kingrinder_adapter" target="_blank" rel="noopener noreferrer">查看原帖 ↗</a></div></div></article>
+<article class="post-item"><div class="post-rank">4</div><div><h3>Why is there no premium CONICAL grinder with a hopper and GbW?</h3><p class="post-why">产品开发视角讨论高端锥形磨豆机市场缺口，涉及 burr 类型与功能需求，可能为产品机会信号。</p><div class="post-meta"><span>r/espresso / 0 score / 0 comments</span><a class="post-link" href="https://www.reddit.com/r/espresso/comments/1wxozde/why_is_there_no_premium_conical_grinder_with_a" target="_blank" rel="noopener noreferrer">查看原帖 ↗</a></div></div></article>
+<article class="post-item"><div class="post-rank">5</div><div><h3>Buying spare parts in France [Baratza Encore ESP]</h3><p class="post-why">反映 Baratza 磨豆机配件获取困难，涉及 burr holder 损坏，与 burr 主题及售后痛点相关。</p><div class="post-meta"><span>r/espresso / 0 score / 0 comments</span><a class="post-link" href="https://www.reddit.com/r/espresso/comments/1wxwlxu/buying_spare_parts_in_france_baratza_encore_esp" target="_blank" rel="noopener noreferrer">查看原帖 ↗</a></div></div></article>
+  </section>
+
+  <section class="panel geimori geimori-clear"><h2>Geimori Watch</h2><p class="geimori-detail">No meaningful Geimori mention in the last 24 hours.</p></section>
+
+  <section class="panel" aria-label="今日行动">
+    <h2>Today Actions</h2>
+    <article class="action-item"><h3>No immediate action required today</h3><p class="action-why">Geimori 零提及，且今日尖峰主题（grind_speed、grind_consistency）虽置信度高，但样本以求助和选购为主，未形成明确的品牌关联机会。</p><div class="action-badges"><span class="pill pill-cat">Community</span><span class="pill">HIGH</span><span class="pill">0 帖</span></div></article>
+  </section>
+
+  <footer class="foot">
+    <div class="foot-meta">生成时间 2026-10-05 19:17:32 · Batch #11 · 窗口 2026-10-04T11:00 → 2026-10-05T11:17</div><div class="foot-source">数据来源：Reddit 公开社区帖子，由阿里云侧抓取与 LLM 分析生成，仅供内部情报参考；原帖链接均指向 reddit.com 真实来源。</div>
+  </footer>
+</div>
+</body>
+</html>

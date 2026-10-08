@@ -68,6 +68,13 @@ def _as_list(value: Any) -> List[Any]:
 def _as_dict(value: Any) -> Dict[str, Any]:
     if isinstance(value, dict):
         return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, dict):
+                return parsed
+        except (json.JSONDecodeError, ValueError):
+            pass
     return {}
 
 

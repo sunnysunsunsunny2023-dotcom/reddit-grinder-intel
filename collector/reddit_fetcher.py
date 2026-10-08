@@ -164,20 +164,10 @@ class RedditFetcher:
             RedditFetchError: 网络或 HTTP 错误（RSS 与 JSON 均失败）。
         """
         if self.prefer_rss:
-            try:
-                return self._fetch_search_rss(query, subreddit, limit=limit, sort=sort)
-            except RedditFetchError as rss_exc:
-                logger.warning(
-                    "Search RSS failed for r/%s q=%r, fallback JSON: %s",
-                    subreddit, query, rss_exc,
-                )
-                try:
-                    return self._fetch_search_json(query, subreddit, limit=limit, sort=sort)
-                except RedditFetchError as json_exc:
-                    raise RedditFetchError(
-                        f"Search RSS and JSON fallback failed for r/{subreddit} "
-                        f"q={query!r}: rss={rss_exc}; json={json_exc}"
-                    ) from None
+            # 数据中心 IP 上 search JSON 端点已知 403（与 new.json 同），
+            # RSS 失败后再 fallback JSON 只会多打一个 403 请求污染限速窗口，
+            # 导致后续 RSS 也 429。因此 prefer_rss 时 RSS 失败直接抛错。
+            return self._fetch_search_rss(query, subreddit, limit=limit, sort=sort)
         try:
             return self._fetch_search_json(query, subreddit, limit=limit, sort=sort)
         except RedditFetchError as json_exc:
@@ -252,6 +242,16 @@ class RedditFetcher:
             status, xml_text = self._curl_get_text(url)
         except RedditFetchError as exc:
             raise RedditFetchError(f"GET {url} failed: {exc}") from exc
+        if status == "429":
+            # search 端点限速严格（实测比 new 严）；429 后退避重试一次
+            logger.warning(
+                "Search RSS 429 for r/%s q=%r, backoff retry", subreddit, query
+            )
+            time.sleep(20)
+            try:
+                status, xml_text = self._curl_get_text(url)
+            except RedditFetchError as exc:
+                raise RedditFetchError(f"GET {url} retry failed: {exc}") from exc
         if status != "200":
             raise RedditFetchError(
                 f"Reddit search RSS returned {status} for r/{subreddit} q={query!r}"

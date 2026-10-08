@@ -387,6 +387,59 @@ def test_search_posts_rss_prefer(monkeypatch):
     assert "q=geimori" in curl_calls[0][-1]
 
 
+def test_search_posts_rss_fail_no_json_fallback(monkeypatch):
+    """prefer_rss 时 search RSS 失败直接抛错，不再 fallback JSON（避免污染限速窗口）。"""
+    from collector.reddit_fetcher import RedditFetchError, RedditFetcher
+
+    class FakeSession:
+        def __init__(self):
+            self.headers = {}
+
+        def get(self, url, params=None, timeout=None):
+            raise AssertionError("JSON should NOT be called after RSS failure in prefer_rss mode")
+
+    def fake_run(cmd, capture_output=None, text=None, timeout=None):
+        proc = type("Proc", (), {"returncode": 0, "stdout": "\n__REDDIT_HTTP_429__", "stderr": ""})
+        return proc
+
+    monkeypatch.setattr("collector.reddit_fetcher.subprocess.run", fake_run)
+    f = RedditFetcher(session=FakeSession(), prefer_rss=True)
+    try:
+        f.search_posts("gu64", "espresso", limit=5)
+        raise AssertionError("should have raised")
+    except RedditFetchError as exc:
+        assert "429" in str(exc)
+
+
+def test_search_rss_429_backoff_retry(monkeypatch):
+    """search RSS 429 后退避重试一次；重试 200 返回结果。"""
+    from collector.reddit_fetcher import RedditFetcher
+
+    sleeps = []
+
+    def fake_sleep(s):
+        sleeps.append(s)
+
+    calls = []
+
+    def fake_run(cmd, capture_output=None, text=None, timeout=None):
+        calls.append(cmd)
+        body = SAMPLE_RSS if len(calls) == 2 else ""
+        status = "__REDDIT_HTTP_200__" if len(calls) == 2 else "__REDDIT_HTTP_429__"
+        proc = type("Proc", (), {"returncode": 0, "stdout": body + "\n" + status, "stderr": ""})
+        return proc
+
+    monkeypatch.setattr("collector.reddit_fetcher.subprocess.run", fake_run)
+    monkeypatch.setattr("collector.reddit_fetcher.time.sleep", fake_sleep)
+    f = RedditFetcher(
+        session=type("S", (), {"headers": {}})(), prefer_rss=True, sleep_seconds=0
+    )
+    posts = f.search_posts("geimori", "pourover", limit=5)
+    assert len(calls) == 2
+    assert sleeps == [20]
+    assert len(posts) == 2
+
+
 def test_search_posts_json_fallback(monkeypatch):
     """search_posts 在 prefer_rss=False 时先 JSON；403 后 fallback search RSS。"""
     from collector.reddit_fetcher import RedditFetcher
@@ -426,7 +479,7 @@ def test_search_posts_json_fallback(monkeypatch):
 
 
 def test_search_backfill_inserts_and_dedupes(tmp_path, monkeypatch):
-    """scheduler._run_search_backfill：新帖入库、重复帖跳过、关键词失败不阻塞。"""
+    """scheduler._run_search_backfill：关键词合并 OR 单查询；新帖入库、重复帖跳过。"""
     from collector import storage
     from collector.dedupe import DedupeFilter
     from collector.scheduler import _run_search_backfill
@@ -441,42 +494,69 @@ def test_search_backfill_inserts_and_dedupes(tmp_path, monkeypatch):
 
         def search_posts(self, query, subreddit, limit=100, sort="new"):
             self.calls.append((query, subreddit))
-            if query == "fail":
-                from collector.reddit_fetcher import RedditFetchError
-                raise RedditFetchError("boom")
             return [
                 {
-                    "id": f"srch_{query}_1",
-                    "title": f"Geimori {query} review",
+                    "id": "srch_1",
+                    "title": "Geimori GU64 review",
                     "selftext": "love it",
                     "created_utc": 1790755200,
                     "score": 5,
                     "upvote_ratio": None,
                     "num_comments": 1,
-                    "permalink": f"/r/espresso/comments/srch_{query}_1/x",
+                    "permalink": "/r/espresso/comments/srch_1/x",
                     "link_flair_text": "Review",
                 },
                 {
-                    "id": f"srch_{query}_2",
-                    "title": f"Geimori {query} question",
+                    "id": "srch_2",
+                    "title": "Geimori GU64 question",
                     "selftext": "anyone tried?",
                     "created_utc": 1790755200,
                     "score": 3,
                     "upvote_ratio": None,
                     "num_comments": 0,
-                    "permalink": f"/r/espresso/comments/srch_{query}_2/x",
+                    "permalink": "/r/espresso/comments/srch_2/x",
                 },
             ]
 
-    dedupe = DedupeFilter(known_ids={"srch_geimori_1"})
-    new_count, found_count = _run_search_backfill(
-        conn, FakeFetcher(), "espresso", ["geimori", "gu64", "fail"], dedupe
+    fake = FakeFetcher()
+    dedupe = DedupeFilter(known_ids={"srch_1"})
+    new_posts, found_count = _run_search_backfill(
+        conn, fake, "espresso", ["geimori", "gu64"], dedupe
     )
-    # geimori: 1 new (2 found, 1 known) + gu64: 2 new + fail: 0 = 3
-    assert new_count == 3
-    assert found_count == 4
+    # 关键词合并为 OR 单查询，只调用一次 search_posts
+    assert len(fake.calls) == 1
+    assert fake.calls[0][0] == "geimori OR gu64"
+    assert fake.calls[0][1] == "espresso"
+    # 返回 (新帖列表, found 数)：srch_1 已知跳过，srch_2 新入
+    assert isinstance(new_posts, list)
+    assert len(new_posts) == 1
+    assert new_posts[0]["post_id"] == "srch_2"
+    assert found_count == 2
     total = conn.execute("SELECT COUNT(*) FROM reddit_posts").fetchone()[0]
-    assert total == 3
+    assert total == 1
+    conn.close()
+
+
+def test_search_backfill_failure_returns_empty_list(tmp_path, monkeypatch):
+    """搜索失败（如 Reddit 429/403）不阻塞整体，返回空列表。"""
+    from collector import storage
+    from collector.dedupe import DedupeFilter
+    from collector.reddit_fetcher import RedditFetchError
+    from collector.scheduler import _run_search_backfill
+
+    db = tmp_path / "test.db"
+    conn = storage.connect(str(db))
+    storage.init_schema(conn, "sql/schema.sql")
+
+    class FakeFetcher:
+        def search_posts(self, query, subreddit, limit=100, sort="new"):
+            raise RedditFetchError("boom")
+
+    new_posts, found_count = _run_search_backfill(
+        conn, FakeFetcher(), "espresso", ["geimori"], DedupeFilter(set())
+    )
+    assert new_posts == []
+    assert found_count == 0
     conn.close()
 
 

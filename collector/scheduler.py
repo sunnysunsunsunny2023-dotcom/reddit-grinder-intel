@@ -18,7 +18,7 @@ import logging
 import os
 import sys
 import time
-from typing import List
+from typing import Any, Dict, List
 
 from .comments import CommentsFetcher
 from .dedupe import DedupeFilter, collect_existing_post_ids
@@ -112,18 +112,18 @@ def run_once(
                 inserted = upsert_posts(conn, new_posts)
 
                 # 搜索补抓：按品牌词补回 new 列表外历史帖
+                search_new_posts: List[Dict[str, Any]] = []
                 search_found = 0
-                search_new = 0
                 if search_keywords:
                     search_new_posts, search_found = _run_search_backfill(
                         conn, fetcher, subreddit, search_keywords, dedupe
                     )
-                    search_new = search_new_posts
+                search_new = len(search_new_posts)
 
                 # 评论抓取（默认关闭；service 以 --comments 显式开启）
                 comment_count = 0
                 if fetch_comments:
-                    all_new = new_posts + search_new_posts if search_keywords else new_posts
+                    all_new = new_posts + search_new_posts
                     for post in all_new:
                         rows = comments_fetcher.fetch_comments(post["post_id"])
                         if rows:
@@ -169,31 +169,28 @@ def _run_search_backfill(
     subreddit: str,
     keywords: List[str],
     dedupe: DedupeFilter,
-) -> tuple[int, int]:
-    """按关键词搜索补抓，返回 (search_new_count, search_found_count)。
+) -> tuple[List[Dict[str, Any]], int]:
+    """按关键词搜索补抓，返回 (新帖原始 dict 列表, 搜索到的帖子总数)。
 
-    每个关键词独立请求（Reddit search 端点支持单关键词检索）；
-    搜索到的历史帖走同一 dedupe，不重复入库。
-    任一关键词失败不影响整体（记录 warning 后继续）。
+    Reddit search 端点对同 IP 请求限速严格（实测 search RSS 429 / JSON 403），
+    因此把全部关键词合并为一个 OR 查询，每 subreddit 仅打 1 次搜索请求，
+    减少命中限速窗口的概率。搜索到的历史帖走同一 dedupe，不重复入库。
+    搜索失败不影响整体（记录 warning 后返回空列表）。
     """
-    new_total = 0
-    found_total = 0
-    for kw in keywords:
-        try:
-            raw = fetcher.search_posts(kw, subreddit, limit=100, sort="new")
-        except RedditFetchError as exc:
-            logger.warning("Search backfill failed for r/%s q=%r: %s", subreddit, kw, exc)
-            continue
-        posts = [parse_post(r, subreddit) for r in raw]
-        posts = [p for p in posts if p["post_id"]]
-        if not posts:
-            continue
-        new_posts, _ = dedupe.split(posts)
-        found_total += len(posts)
-        if new_posts:
-            inserted = upsert_posts(conn, new_posts)
-            new_total += inserted
-    return new_total, found_total
+    query = " OR ".join(keywords)
+    try:
+        raw = fetcher.search_posts(query, subreddit, limit=100, sort="new")
+    except RedditFetchError as exc:
+        logger.warning("Search backfill failed for r/%s q=%r: %s", subreddit, query, exc)
+        return [], 0
+    posts = [parse_post(r, subreddit) for r in raw]
+    posts = [p for p in posts if p["post_id"]]
+    if not posts:
+        return [], 0
+    new_posts, _ = dedupe.split(posts)
+    if new_posts:
+        upsert_posts(conn, new_posts)
+    return new_posts, len(posts)
 
 
 def main(argv: List[str] | None = None) -> int:
