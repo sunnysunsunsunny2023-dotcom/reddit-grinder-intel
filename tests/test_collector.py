@@ -355,3 +355,192 @@ def test_upsert_posts_created_utc_iso_t_bind(tmp_path):
     ).fetchone()[0]
     assert isinstance(v, dt.datetime) and v == dt.datetime(2026, 9, 27, 2, 42, 49)
     conn.close()
+
+
+# ---------------- v0.2.5: 关键词搜索补抓 + 评论 curl fallback ----------------
+def test_search_posts_rss_prefer(monkeypatch):
+    """search_posts 在 prefer_rss=True 时直接走 search RSS（curl），不先打 JSON。"""
+    from collector.reddit_fetcher import RedditFetcher
+
+    class FakeSession:
+        def __init__(self):
+            self.calls = []
+            self.headers = {}
+
+        def get(self, url, params=None, timeout=None):
+            self.calls.append(url)
+            raise AssertionError("JSON should not be called in prefer_rss mode")
+
+    curl_calls = []
+
+    def fake_run(cmd, capture_output=None, text=None, timeout=None):
+        curl_calls.append(cmd)
+        proc = type("Proc", (), {"returncode": 0, "stdout": SAMPLE_RSS + "\n__REDDIT_HTTP_200__", "stderr": ""})
+        return proc
+
+    monkeypatch.setattr("collector.reddit_fetcher.subprocess.run", fake_run)
+    f = RedditFetcher(session=FakeSession(), prefer_rss=True)
+    posts = f.search_posts("geimori", "pourover", limit=5)
+    assert len(posts) == 2
+    assert len(curl_calls) == 1
+    assert "/search/.rss" in curl_calls[0][-1]
+    assert "q=geimori" in curl_calls[0][-1]
+
+
+def test_search_posts_json_fallback(monkeypatch):
+    """search_posts 在 prefer_rss=False 时先 JSON；403 后 fallback search RSS。"""
+    from collector.reddit_fetcher import RedditFetcher
+
+    class FakeResp:
+        def __init__(self, status):
+            self.status_code = status
+
+        def json(self):
+            return {}
+
+    class FakeSession:
+        def __init__(self):
+            self.calls = []
+            self.headers = {}
+
+        def get(self, url, params=None, timeout=None):
+            self.calls.append(url)
+            if "search.json" in url:
+                return FakeResp(403)
+            return FakeResp(200)
+
+    curl_calls = []
+
+    def fake_run(cmd, capture_output=None, text=None, timeout=None):
+        curl_calls.append(cmd)
+        proc = type("Proc", (), {"returncode": 0, "stdout": SAMPLE_RSS + "\n__REDDIT_HTTP_200__", "stderr": ""})
+        return proc
+
+    monkeypatch.setattr("collector.reddit_fetcher.subprocess.run", fake_run)
+    f = RedditFetcher(session=FakeSession())
+    posts = f.search_posts("gu64", "espresso", limit=5)
+    assert len(f._session.calls) == 1
+    assert "search.json" in f._session.calls[0]
+    assert len(curl_calls) == 1
+    assert "/search/.rss" in curl_calls[0][-1]
+
+
+def test_search_backfill_inserts_and_dedupes(tmp_path, monkeypatch):
+    """scheduler._run_search_backfill：新帖入库、重复帖跳过、关键词失败不阻塞。"""
+    from collector import storage
+    from collector.dedupe import DedupeFilter
+    from collector.scheduler import _run_search_backfill
+
+    db = tmp_path / "test.db"
+    conn = storage.connect(str(db))
+    storage.init_schema(conn, "sql/schema.sql")
+
+    class FakeFetcher:
+        def __init__(self):
+            self.calls = []
+
+        def search_posts(self, query, subreddit, limit=100, sort="new"):
+            self.calls.append((query, subreddit))
+            if query == "fail":
+                from collector.reddit_fetcher import RedditFetchError
+                raise RedditFetchError("boom")
+            return [
+                {
+                    "id": f"srch_{query}_1",
+                    "title": f"Geimori {query} review",
+                    "selftext": "love it",
+                    "created_utc": 1790755200,
+                    "score": 5,
+                    "upvote_ratio": None,
+                    "num_comments": 1,
+                    "permalink": f"/r/espresso/comments/srch_{query}_1/x",
+                    "link_flair_text": "Review",
+                },
+                {
+                    "id": f"srch_{query}_2",
+                    "title": f"Geimori {query} question",
+                    "selftext": "anyone tried?",
+                    "created_utc": 1790755200,
+                    "score": 3,
+                    "upvote_ratio": None,
+                    "num_comments": 0,
+                    "permalink": f"/r/espresso/comments/srch_{query}_2/x",
+                },
+            ]
+
+    dedupe = DedupeFilter(known_ids={"srch_geimori_1"})
+    new_count, found_count = _run_search_backfill(
+        conn, FakeFetcher(), "espresso", ["geimori", "gu64", "fail"], dedupe
+    )
+    # geimori: 1 new (2 found, 1 known) + gu64: 2 new + fail: 0 = 3
+    assert new_count == 3
+    assert found_count == 4
+    total = conn.execute("SELECT COUNT(*) FROM reddit_posts").fetchone()[0]
+    assert total == 3
+    conn.close()
+
+
+def test_comments_curl_fallback(monkeypatch):
+    """评论 JSON 403 时 fallback curl 拉取并解析。"""
+    import json as _json
+
+    from collector.comments import CommentsFetcher
+    from collector.reddit_fetcher import RedditFetcher
+
+    COMMENT_PAYLOAD = [
+        {"kind": "Listing"},
+        {
+            "kind": "Listing",
+            "data": {
+                "children": [
+                    {
+                        "kind": "t1",
+                        "data": {
+                            "id": "cmt1",
+                            "body": "I love my Geimori GU64",
+                            "score": 8,
+                            "created_utc": 1790755300,
+                            "depth": 0,
+                        },
+                    },
+                    {
+                        "kind": "t1",
+                        "data": {
+                            "id": "cmt2",
+                            "body": "DF64 is great too",
+                            "score": 2,
+                            "created_utc": 1790755400,
+                            "depth": 1,
+                        },
+                    },
+                ]
+            },
+        },
+    ]
+    body = _json.dumps(COMMENT_PAYLOAD)
+
+    class FakeResp:
+        def __init__(self, status):
+            self.status_code = status
+
+    class FakeSession:
+        def __init__(self):
+            self.headers = {}
+
+        def get(self, url, params=None, timeout=None):
+            return FakeResp(403)
+
+    curl_calls = []
+
+    def fake_run(cmd, capture_output=None, text=None, timeout=None):
+        curl_calls.append(cmd)
+        proc = type("Proc", (), {"returncode": 0, "stdout": body + "\n__REDDIT_HTTP_200__", "stderr": ""})
+        return proc
+
+    monkeypatch.setattr("collector.reddit_fetcher.subprocess.run", fake_run)
+    f = RedditFetcher(session=FakeSession())
+    rows = CommentsFetcher(f).fetch_comments("post1")
+    assert len(rows) == 2
+    assert rows[0]["comment_id"] == "cmt1"
+    assert rows[0]["body"] == "I love my Geimori GU64"
+    assert "comments/post1.json" in curl_calls[0][-1]

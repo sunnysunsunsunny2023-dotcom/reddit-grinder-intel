@@ -36,6 +36,16 @@ from .storage import (
 logger = logging.getLogger(__name__)
 
 DEFAULT_SUBREDDITS = ["pourover", "espresso"]
+# 品牌/产品关键词搜索补抓（Reddit search 端点按词检索，可捞回 new 前100 之外的历史帖）
+DEFAULT_SEARCH_KEYWORDS = [
+    "geimori",
+    "mywirsh",
+    "wirsh",
+    "gu63",
+    "gu64",
+    "gu38",
+    "t38",
+]
 
 
 def load_env_file(path: str = "/opt/reddit-intel/.env") -> None:
@@ -65,8 +75,15 @@ def run_once(
     limit: int = 100,
     fetch_comments: bool = False,
     schema_sql_path: str = "sql/schema.sql",
+    search_keywords: Optional[List[str]] = None,
 ) -> dict:
-    """执行一次完整抓取流程，返回汇总统计。"""
+    """执行一次完整抓取流程，返回汇总统计。
+
+    Args:
+        search_keywords: 关键词搜索补抓列表；非空时对每个 subreddit
+            按词补抓 new 前 100 之外的历史帖（Reddit search 端点）。
+            传入空列表/None 则关闭搜索补抓。
+    """
     database_path = os.environ.get(
         "DATABASE_PATH", "/opt/reddit-intel/data/reddit_intel.db"
     )
@@ -76,7 +93,7 @@ def run_once(
         fetcher = build_fetcher_from_env()
         comments_fetcher = CommentsFetcher(fetcher)
 
-        summary: dict = {"runs": [], "total_posts_new": 0}
+        summary: dict = {"runs": [], "total_posts_new": 0, "total_search_new": 0}
         for idx, subreddit in enumerate(subreddits):
             # Reddit RSS 端点对同 IP 短窗口限速（实测：4 分钟间隔没问题，
             # 30s 间隔第二次 429），多 subreddit 之间留 120s 缓冲。
@@ -94,9 +111,20 @@ def run_once(
 
                 inserted = upsert_posts(conn, new_posts)
 
+                # 搜索补抓：按品牌词补回 new 列表外历史帖
+                search_found = 0
+                search_new = 0
+                if search_keywords:
+                    search_new_posts, search_found = _run_search_backfill(
+                        conn, fetcher, subreddit, search_keywords, dedupe
+                    )
+                    search_new = search_new_posts
+
+                # 评论抓取（默认关闭；service 以 --comments 显式开启）
                 comment_count = 0
                 if fetch_comments:
-                    for post in new_posts:
+                    all_new = new_posts + search_new_posts if search_keywords else new_posts
+                    for post in all_new:
                         rows = comments_fetcher.fetch_comments(post["post_id"])
                         if rows:
                             upsert_comments(conn, rows)
@@ -115,10 +143,13 @@ def run_once(
                         "found": len(posts),
                         "new": inserted,
                         "existing": len(existing_posts),
+                        "search_found": search_found,
+                        "search_new": search_new,
                         "comments": comment_count,
                     }
                 )
                 summary["total_posts_new"] += inserted
+                summary["total_search_new"] += search_new
             except RedditFetchError as exc:
                 finish_fetch_run(
                     conn, run_id, posts_found=0, posts_new=0,
@@ -132,6 +163,39 @@ def run_once(
         conn.close()
 
 
+def _run_search_backfill(
+    conn,
+    fetcher,
+    subreddit: str,
+    keywords: List[str],
+    dedupe: DedupeFilter,
+) -> tuple[int, int]:
+    """按关键词搜索补抓，返回 (search_new_count, search_found_count)。
+
+    每个关键词独立请求（Reddit search 端点支持单关键词检索）；
+    搜索到的历史帖走同一 dedupe，不重复入库。
+    任一关键词失败不影响整体（记录 warning 后继续）。
+    """
+    new_total = 0
+    found_total = 0
+    for kw in keywords:
+        try:
+            raw = fetcher.search_posts(kw, subreddit, limit=100, sort="new")
+        except RedditFetchError as exc:
+            logger.warning("Search backfill failed for r/%s q=%r: %s", subreddit, kw, exc)
+            continue
+        posts = [parse_post(r, subreddit) for r in raw]
+        posts = [p for p in posts if p["post_id"]]
+        if not posts:
+            continue
+        new_posts, _ = dedupe.split(posts)
+        found_total += len(posts)
+        if new_posts:
+            inserted = upsert_posts(conn, new_posts)
+            new_total += inserted
+    return new_total, found_total
+
+
 def main(argv: List[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Reddit Grinder collector")
     parser.add_argument(
@@ -143,6 +207,12 @@ def main(argv: List[str] | None = None) -> int:
     parser.add_argument("--limit", type=int, default=100, help="每个 subreddit 拉取条数")
     parser.add_argument(
         "--comments", action="store_true", help="同时拉取评论（默认关闭）"
+    )
+    parser.add_argument(
+        "--search-keywords",
+        nargs="+",
+        default=None,
+        help="关键词搜索补抓列表；默认 None（关闭），传值如：--search-keywords geimori wirsh gu64",
     )
     parser.add_argument(
         "--schema", default="sql/schema.sql", help="schema.sql 路径"
@@ -160,6 +230,7 @@ def main(argv: List[str] | None = None) -> int:
             limit=args.limit,
             fetch_comments=args.comments,
             schema_sql_path=args.schema,
+            search_keywords=args.search_keywords,
         )
     except Exception as exc:  # noqa: BLE001
         logger.exception("Collector run failed")
@@ -167,11 +238,13 @@ def main(argv: List[str] | None = None) -> int:
 
     for run in summary["runs"]:
         logger.info(
-            "r/%s: found=%d new=%d existing=%d comments=%d",
+            "r/%s: found=%d new=%d existing=%d search_found=%d search_new=%d comments=%d",
             run["subreddit"], run["found"], run["new"],
-            run["existing"], run["comments"],
+            run["existing"], run["search_found"], run["search_new"],
+            run["comments"],
         )
     logger.info("Total new posts inserted: %d", summary["total_posts_new"])
+    logger.info("Total search-backfill new posts inserted: %d", summary["total_search_new"])
     return 0
 
 

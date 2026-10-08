@@ -26,6 +26,8 @@ logger = logging.getLogger(__name__)
 
 REDDIT_JSON_BASE = "https://www.reddit.com/r/{subreddit}/new.json"
 REDDIT_RSS_BASE = "https://www.reddit.com/r/{subreddit}/new/.rss"
+REDDIT_SEARCH_JSON_BASE = "https://www.reddit.com/r/{subreddit}/search.json"
+REDDIT_SEARCH_RSS_BASE = "https://www.reddit.com/r/{subreddit}/search/.rss"
 DEFAULT_USER_AGENT = (
     "linux:reddit-grinder-intel:v0.1.0 (by /u/reddit_grinder_intel; "
     "internal monitoring script)"
@@ -135,6 +137,137 @@ class RedditFetcher:
         self.prefer_rss = prefer_rss
         self._session = session or requests.Session()
         self._session.headers.update({"User-Agent": user_agent})
+
+    def search_posts(
+        self,
+        query: str,
+        subreddit: str,
+        limit: int = 100,
+        sort: str = "new",
+    ) -> List[Dict[str, Any]]:
+        """按关键词搜索某个 subreddit 的帖子（用于补抓 new 列表外的历史帖）。
+
+        与 fetch_new_posts 同构：优先 RSS（服务器 JSON 端点常 403），
+        RSS 失败时 fallback JSON；两者均失败抛 RedditFetchError。
+        搜索结果格式与 new listing 兼容（RSS 走 parse_rss_feed）。
+
+        Args:
+            query: 搜索关键词（如 "geimori" / "gu64"），可含 Reddit 搜索语法。
+            subreddit: subreddit 名（不含 r/ 前缀）。
+            limit: 最多拉多少条（Reddit 上限 100）。
+            sort: 排序，默认 new（搜最新）；可选 relevance/top/comments。
+
+        Returns:
+            帖子原始 dict 列表（与 JSON listing data 兼容）。
+
+        Raises:
+            RedditFetchError: 网络或 HTTP 错误（RSS 与 JSON 均失败）。
+        """
+        if self.prefer_rss:
+            try:
+                return self._fetch_search_rss(query, subreddit, limit=limit, sort=sort)
+            except RedditFetchError as rss_exc:
+                logger.warning(
+                    "Search RSS failed for r/%s q=%r, fallback JSON: %s",
+                    subreddit, query, rss_exc,
+                )
+                try:
+                    return self._fetch_search_json(query, subreddit, limit=limit, sort=sort)
+                except RedditFetchError as json_exc:
+                    raise RedditFetchError(
+                        f"Search RSS and JSON fallback failed for r/{subreddit} "
+                        f"q={query!r}: rss={rss_exc}; json={json_exc}"
+                    ) from None
+        try:
+            return self._fetch_search_json(query, subreddit, limit=limit, sort=sort)
+        except RedditFetchError as json_exc:
+            if "403" not in str(json_exc):
+                raise
+            logger.warning(
+                "Search JSON 403 for r/%s q=%r (数据中心 IP 常被 JSON 端点拒绝)，fallback RSS: %s",
+                subreddit, query, json_exc,
+            )
+            if self.sleep_seconds > 0:
+                time.sleep(max(self.sleep_seconds, 3))
+            try:
+                return self._fetch_search_rss(query, subreddit, limit=limit, sort=sort)
+            except RedditFetchError as rss_exc:
+                raise RedditFetchError(
+                    f"Search JSON 403 and RSS fallback failed for r/{subreddit} "
+                    f"q={query!r}: json={json_exc}; rss={rss_exc}"
+                ) from None
+
+    def _fetch_search_json(
+        self, query: str, subreddit: str, limit: int = 100, sort: str = "new"
+    ) -> List[Dict[str, Any]]:
+        """从公开 search.json 端点拉取搜索结果（原逻辑同 new.json）。"""
+        url = REDDIT_SEARCH_JSON_BASE.format(subreddit=subreddit)
+        params: Dict[str, Any] = {
+            "q": query,
+            "limit": min(limit, 100),
+            "sort": sort,
+        }
+        try:
+            resp = self._session.get(url, params=params, timeout=self.timeout)
+        except requests.RequestException as exc:
+            raise RedditFetchError(f"GET {url} q={query!r} failed: {exc}") from exc
+
+        if resp.status_code == 429:
+            raise RedditFetchError(
+                f"Reddit rate-limited (429) for search r/{subreddit} q={query!r}; "
+                "respect User-Agent and backoff."
+            )
+        if resp.status_code != 200:
+            raise RedditFetchError(
+                f"Reddit search returned {resp.status_code} for r/{subreddit} q={query!r}"
+            )
+        try:
+            payload = resp.json()
+        except ValueError as exc:
+            raise RedditFetchError(
+                f"Invalid search JSON from Reddit for r/{subreddit} q={query!r}"
+            ) from exc
+
+        children = payload.get("data", {}).get("children", [])
+        posts = [child.get("data", {}) for child in children if child.get("kind") == "t3"]
+        logger.info(
+            "Search fetched %d posts from r/%s q=%r (json)",
+            len(posts), subreddit, query,
+        )
+        self._throttle()
+        return posts
+
+    def _fetch_search_rss(
+        self, query: str, subreddit: str, limit: int = 100, sort: str = "new"
+    ) -> List[Dict[str, Any]]:
+        """从 search RSS 端点拉取并解析（curl 拉取，与 _fetch_rss 同策略）。"""
+        import urllib.parse as _up
+
+        encoded = _up.quote(query)
+        url = (
+            f"{REDDIT_SEARCH_RSS_BASE.format(subreddit=subreddit)}"
+            f"?q={encoded}&sort={sort}&limit={min(limit, 100)}"
+        )
+        try:
+            status, xml_text = self._curl_get_text(url)
+        except RedditFetchError as exc:
+            raise RedditFetchError(f"GET {url} failed: {exc}") from exc
+        if status != "200":
+            raise RedditFetchError(
+                f"Reddit search RSS returned {status} for r/{subreddit} q={query!r}"
+            )
+        try:
+            posts = parse_rss_feed(xml_text)
+        except ET.ParseError as exc:
+            raise RedditFetchError(
+                f"Invalid search RSS XML from Reddit for r/{subreddit} q={query!r}: {exc}"
+            ) from exc
+        logger.info(
+            "Search fetched %d posts from r/%s q=%r (rss)",
+            len(posts), subreddit, query,
+        )
+        self._throttle()
+        return posts
 
     def fetch_new_posts(
         self, subreddit: str, limit: int = 100, after: Optional[str] = None

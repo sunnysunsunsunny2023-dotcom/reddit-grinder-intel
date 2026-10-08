@@ -1,9 +1,9 @@
 [Unit]
-Description=Reddit Grinder collector schedule (2x daily)
+Description=Reddit Grinder collector schedule (4x daily)
 
 [Timer]
-OnCalendar=*-*-* 00:30:00
-OnCalendar=*-*-* 12:30:00
+# 每 4 小时一次（00:00 / 04:00 / 08:00 / 12:00 / 16:00 / 20:00），缩短 new 前100 错过窗口
+OnCalendar=*-*-* 00/4:00:00
 Persistent=true
 RandomizedDelaySec=300
 

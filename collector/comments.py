@@ -26,6 +26,9 @@ class CommentsFetcher:
     def fetch_comments(self, post_id: str, limit_threads: int = 200) -> List[Dict[str, Any]]:
         """拉取一个帖子的评论并标准化。
 
+        服务器数据中心 IP 上 Reddit JSON 端点常 403（与 RSS 同样策略）：
+        先试 requests，非 200/403 时 fallback 到 curl 拉取同一 URL。
+
         Args:
             post_id: Reddit 帖子 base36 id。
             limit_threads: 限制顶层评论数（默认 200）。
@@ -34,6 +37,7 @@ class CommentsFetcher:
             可入库的 reddit_comments 行列表（可能为空）。
         """
         url = COMMENTS_BASE.format(post_id=post_id)
+        payload: Any = None
         try:
             resp = self._fetcher._session.get(
                 url, params={"limit": limit_threads}, timeout=self._fetcher.timeout
@@ -41,14 +45,30 @@ class CommentsFetcher:
         except Exception as exc:  # noqa: BLE001
             raise RedditFetchError(f"GET {url} failed: {exc}") from exc
 
-        if resp.status_code != 200:
-            logger.warning("Comments fetch %s -> %s", url, resp.status_code)
-            return []
+        if resp.status_code == 200:
+            try:
+                payload = resp.json()
+            except ValueError:
+                payload = None
+        else:
+            # JSON 端点 403（数据中心 IP 常见）→ curl 拉取
+            logger.warning("Comments JSON %s -> %s; fallback curl", url, resp.status_code)
+            try:
+                status, body = self._fetcher._curl_get_text(
+                    f"{url}?limit={limit_threads}"
+                )
+            except RedditFetchError as exc:
+                logger.warning("Comments curl fallback failed %s: %s", url, exc)
+                return []
+            if status != "200":
+                logger.warning("Comments curl %s -> %s", url, status)
+                return []
+            try:
+                import json as _json
 
-        try:
-            payload = resp.json()
-        except ValueError:
-            return []
+                payload = _json.loads(body)
+            except ValueError:
+                return []
 
         rows: List[Dict[str, Any]] = []
         # payload = [post_listing, comments_listing]

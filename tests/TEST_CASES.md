@@ -83,3 +83,19 @@
 - **修复**：`analyst/analyzer.py::analyze_batch` 按 report_type 区分 max_tokens：weekly=8192，daily=4096
 - **回归用例**：`tests/test_analyzer.py::test_analyze_batch_weekly_uses_larger_max_tokens`
 - **版本**：v0.2.3
+
+### RGI-010：Geimori GU64 帖子漏抓 — new 前100 外历史帖无回溯
+- **现象**：r/espresso 帖子「Geimori GU64 Gen 2 got delivered today」（u/sah4r，10-06 发布）完全未入库，日报 Geimori 0 提及；标题含 geimori/gu64 关键词，非关键词漏判
+- **根因**：采集器每天 00:30/12:30 只抓 `new.json` 前 100 条（发布后数小时内掉出列表即永久错过），无关键词搜索回溯；评论默认不抓（`fetch_comments=False`），评论内品牌提及全部丢失
+- **修复**：
+  - `collector/reddit_fetcher.py`：新增 `search_posts()` + `_fetch_search_json()` + `_fetch_search_rss()`（search.json → search RSS fallback，URL 编码 q）
+  - `collector/scheduler.py`：`run_once` 支持 `search_keywords`，每 subreddit 抓完 new 后按品牌词（geimori/mywirsh/wirsh/gu63/gu64/gu38/t38）搜索补抓，走同一 dedupe；`_run_search_backfill()` 单关键词失败不阻塞
+  - `deploy/reddit-intel-collector.service`：`--comments --search-keywords geimori mywirsh wirsh gu63 gu64 gu38 t38`
+  - `deploy/reddit-intel-collector.timer`：每天 2 次 → 每 4 小时（`*-*-* 00/4:00:00`）
+  - `collector/comments.py`：评论 JSON 403（数据中心 IP 常见）时 fallback curl 拉取同一 URL
+- **回归用例**：
+  - `tests/test_collector.py::test_search_posts_rss_prefer`
+  - `tests/test_collector.py::test_search_posts_json_fallback`
+  - `tests/test_collector.py::test_search_backfill_inserts_and_dedupes`
+  - `tests/test_collector.py::test_comments_curl_fallback`
+- **版本**：v0.2.5

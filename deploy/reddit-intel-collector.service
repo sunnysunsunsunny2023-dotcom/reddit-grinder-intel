@@ -8,5 +8,5 @@ User=reddit-intel
 Group=reddit-intel
 WorkingDirectory=/opt/reddit-intel
 EnvironmentFile=/opt/reddit-intel/.env
-ExecStart=/opt/reddit-intel/.venv/bin/python -m collector.scheduler --subreddits pourover espresso --limit 100
+ExecStart=/opt/reddit-intel/.venv/bin/python -m collector.scheduler --subreddits pourover espresso --limit 100 --comments --search-keywords geimori mywirsh wirsh gu63 gu64 gu38 t38
 # 拉取失败不影响下次运行
