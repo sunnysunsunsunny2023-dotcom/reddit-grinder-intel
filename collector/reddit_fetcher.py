@@ -86,6 +86,9 @@ def parse_rss_feed(xml_text: str) -> List[Dict[str, Any]]:
         content_el = entry.find("atom:content", _NS)
         content = content_el.text if content_el is not None else None
         published = entry.findtext("atom:published", default="", namespaces=_NS) or ""
+        if not published:
+            # 搜索结果条目可能只有 updated 没有 published（Atom 规范二者至少其一）
+            published = entry.findtext("atom:updated", default="", namespaces=_NS) or ""
         author = ""
         author_el = entry.find("atom:author/atom:name", _NS)
         if author_el is not None:

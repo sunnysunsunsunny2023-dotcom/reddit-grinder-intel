@@ -108,9 +108,11 @@
 - **修复**：
   - `collector/scheduler.py`：`_run_search_backfill()` 把全部关键词合并为单个 OR 查询（`q=geimori OR mywirsh OR ...`），每 subreddit 只打 1 次搜索请求，返回 `(新帖原始 dict 列表, 搜索到的帖子总数)`；`run_once` 解包列表、`search_new = len(search_new_posts)`，评论抓取直接复用 `new_posts + search_new_posts`
   - `collector/reddit_fetcher.py`：prefer_rss 时 search RSS 失败直接抛错、不再 fallback JSON（避免 403 污染限速窗口）；`_fetch_search_rss()` 对 429 退避 20s 重试一次
+  - **第二轮（v0.2.7）**：搜索 RSS 首次 429 → 退避重试成功拉到 98 条，但入库抛 `sqlite3.IntegrityError: NOT NULL constraint failed: reddit_posts.created_utc`——search RSS 部分条目只有 `<updated>` 没有 `<published>`，时间字段缺失。`parse_rss_feed()` 增加 `<updated>` fallback；`_run_search_backfill()` 过滤 created_utc 为 None 的帖子（无时间戳无法纳入窗口统计）
 - **回归用例**：
   - `tests/test_collector.py::test_search_backfill_inserts_and_dedupes`（改：OR 合并 + 返回列表断言）
   - `tests/test_collector.py::test_search_backfill_failure_returns_empty_list`（新增：搜索失败不阻塞整体）
   - `tests/test_collector.py::test_search_posts_rss_fail_no_json_fallback`（新增：prefer_rss 失败不再 fallback JSON）
   - `tests/test_collector.py::test_search_rss_429_backoff_retry`（新增：429 退避重试）
-- **版本**：v0.2.6
+  - `tests/test_collector.py::test_parse_rss_feed_updated_fallback`（新增：updated fallback 解析 created_utc）
+- **版本**：v0.2.6 → v0.2.7

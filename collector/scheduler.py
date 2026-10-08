@@ -184,7 +184,7 @@ def _run_search_backfill(
         logger.warning("Search backfill failed for r/%s q=%r: %s", subreddit, query, exc)
         return [], 0
     posts = [parse_post(r, subreddit) for r in raw]
-    posts = [p for p in posts if p["post_id"]]
+    posts = [p for p in posts if p["post_id"] and p["created_utc"]]
     if not posts:
         return [], 0
     new_posts, _ = dedupe.split(posts)

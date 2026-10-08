@@ -98,6 +98,24 @@ def test_parse_rss_feed():
     assert p["score"] == 0
 
 
+def test_parse_rss_feed_updated_fallback():
+    """search RSS 条目只有 updated 没有 published 时，用 updated 解析 created_utc。"""
+    rss = """<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry>
+    <id>t3_rssupd1</id>
+    <link href="https://www.reddit.com/r/espresso/comments/rssupd1/geimori_gu64_delivered/"/>
+    <title>Geimori GU64 Gen 2 got delivered today</title>
+    <updated>2026-10-06T10:30:00+00:00</updated>
+  </entry>
+</feed>
+"""
+    posts = parse_rss_feed(rss)
+    assert len(posts) == 1
+    assert posts[0]["id"] == "rssupd1"
+    assert posts[0]["created_utc"] == 1791282600  # 2026-10-06T10:30:00+00:00 epoch
+
+
 def test_rss_fallback_when_json_403(monkeypatch):
     """JSON 403 时自动 fallback 到 RSS（curl 拉取）；RSS 也失败时保留原始 403 错误。"""
 
