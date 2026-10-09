@@ -16,17 +16,11 @@ jobs:
           script: |
             set -e
             DB=/opt/reddit-intel/data/reddit_intel.db
-            echo "==> 数据库存在性与大小"
-            ls -lh $DB 2>/dev/null || { echo "DB MISSING"; exit 1; }
-            echo "==> 帖子总数 & 最近5帖"
-            sudo -u reddit-intel sqlite3 $DB "SELECT COUNT(*) FROM reddit_posts;" 2>/dev/null || sqlite3 $DB "SELECT COUNT(*) FROM reddit_posts;"
-            echo "--- 最近 10 帖（title, created_utc, subreddit）---"
-            sudo -u reddit-intel sqlite3 $DB "SELECT substr(title,1,60), created_utc, subreddit FROM reddit_posts ORDER BY created_utc DESC LIMIT 10;" 2>/dev/null || sqlite3 $DB "SELECT substr(title,1,60), created_utc, subreddit FROM reddit_posts ORDER BY created_utc DESC LIMIT 10;"
-            echo "==> Geimori 关键词相关帖子"
-            sudo -u reddit-intel sqlite3 $DB "SELECT post_id, substr(title,1,70), created_utc, subreddit FROM reddit_posts WHERE lower(title||' '||coalesce(selftext,'')) LIKE '%geimori%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%gu63%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%gu64%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%gu38%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%mywirsh%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%wirsh%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%t38%' ORDER BY created_utc DESC LIMIT 20;" 2>/dev/null || sqlite3 $DB "SELECT post_id, substr(title,1,70), created_utc, subreddit FROM reddit_posts WHERE lower(title||' '||coalesce(selftext,'')) LIKE '%geimori%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%gu63%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%gu64%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%gu38%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%mywirsh%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%wirsh%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%t38%' ORDER BY created_utc DESC LIMIT 20;"
-            echo "==> 最近抓取运行记录"
-            sudo -u reddit-intel sqlite3 $DB "SELECT run_id, started_at, finished_at, subreddit, posts_found, posts_new, comments_found, status FROM fetch_runs ORDER BY started_at DESC LIMIT 12;" 2>/dev/null || sqlite3 $DB "SELECT run_id, started_at, finished_at, subreddit, posts_found, posts_new, comments_found, status FROM fetch_runs ORDER BY started_at DESC LIMIT 12;"
-            echo "==> collector timer 状态"
-            systemctl list-timers reddit-intel-collector.timer --no-pager || true
-            echo "==> 最近 collector 日志"
-            journalctl -u reddit-intel-collector.service -n 20 --no-pager | tail -15 || true
+            echo "==> analysis_batches 最近 6 批"
+            sudo -u reddit-intel sqlite3 $DB "SELECT batch_id, report_type, period_start, period_end, post_count, analysis_version, status, created_at FROM analysis_batches ORDER BY batch_id DESC LIMIT 6;" 2>/dev/null || sqlite3 $DB "SELECT batch_id, report_type, period_start, period_end, post_count, analysis_version, status, created_at FROM analysis_batches ORDER BY batch_id DESC LIMIT 6;"
+            echo "==> 最近 daily 分析结果的 geimori 相关字段"
+            sudo -u reddit-intel sqlite3 $DB "SELECT batch_id, substr(result_json,1,300) FROM analysis_results WHERE report_type='daily' ORDER BY batch_id DESC LIMIT 3;" 2>/dev/null || sqlite3 $DB "SELECT batch_id, substr(result_json,1,300) FROM analysis_results WHERE report_type='daily' ORDER BY batch_id DESC LIMIT 3;"
+            echo "==> 10-08 前后 Geimori 帖子（含 created_utc 精确时间）"
+            sudo -u reddit-intel sqlite3 $DB "SELECT post_id, substr(title,1,50), created_utc, subreddit FROM reddit_posts WHERE (lower(title) LIKE '%geimori%' OR lower(title) LIKE '%gu63%' OR lower(title) LIKE '%gu64%' OR lower(title) LIKE '%gu38%') AND created_utc >= '2026-10-07' ORDER BY created_utc;" 2>/dev/null || sqlite3 $DB "SELECT post_id, substr(title,1,50), created_utc, subreddit FROM reddit_posts WHERE (lower(title) LIKE '%geimori%' OR lower(title) LIKE '%gu63%' OR lower(title) LIKE '%gu64%' OR lower(title) LIKE '%gu38%') AND created_utc >= '2026-10-07' ORDER BY created_utc;"
+            echo "==> daily 批次内是否有 GU64 帖（analysis_items join posts）"
+            sudo -u reddit-intel sqlite3 $DB "SELECT b.batch_id, b.period_start, b.period_end, p.post_id, substr(p.title,1,50), p.created_utc FROM analysis_batches b JOIN analysis_items i ON i.batch_id=b.batch_id JOIN reddit_posts p ON p.post_id=i.post_id WHERE b.report_type='daily' AND (lower(p.title) LIKE '%gu64%' OR lower(p.title) LIKE '%geimori%') ORDER BY b.batch_id DESC LIMIT 10;" 2>/dev/null || sqlite3 $DB "SELECT b.batch_id, b.period_start, b.period_end, p.post_id, substr(p.title,1,50), p.created_utc FROM analysis_batches b JOIN analysis_items i ON i.batch_id=b.batch_id JOIN reddit_posts p ON p.post_id=i.post_id WHERE b.report_type='daily' AND (lower(p.title) LIKE '%gu64%' OR lower(p.title) LIKE '%geimori%') ORDER BY b.batch_id DESC LIMIT 10;"
