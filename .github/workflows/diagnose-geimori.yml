@@ -1,0 +1,32 @@
+name: Diagnose Geimori Data
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH diagnose DB
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 10m
+          script: |
+            set -e
+            DB=/opt/reddit-intel/data/reddit_intel.db
+            echo "==> 数据库存在性与大小"
+            ls -lh $DB 2>/dev/null || { echo "DB MISSING"; exit 1; }
+            echo "==> 帖子总数 & 最近5帖"
+            sudo -u reddit-intel sqlite3 $DB "SELECT COUNT(*) FROM reddit_posts;" 2>/dev/null || sqlite3 $DB "SELECT COUNT(*) FROM reddit_posts;"
+            echo "--- 最近 10 帖（title, created_utc, subreddit）---"
+            sudo -u reddit-intel sqlite3 $DB "SELECT substr(title,1,60), created_utc, subreddit FROM reddit_posts ORDER BY created_utc DESC LIMIT 10;" 2>/dev/null || sqlite3 $DB "SELECT substr(title,1,60), created_utc, subreddit FROM reddit_posts ORDER BY created_utc DESC LIMIT 10;"
+            echo "==> Geimori 关键词相关帖子"
+            sudo -u reddit-intel sqlite3 $DB "SELECT post_id, substr(title,1,70), created_utc, subreddit FROM reddit_posts WHERE lower(title||' '||coalesce(selftext,'')) LIKE '%geimori%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%gu63%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%gu64%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%gu38%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%mywirsh%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%wirsh%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%t38%' ORDER BY created_utc DESC LIMIT 20;" 2>/dev/null || sqlite3 $DB "SELECT post_id, substr(title,1,70), created_utc, subreddit FROM reddit_posts WHERE lower(title||' '||coalesce(selftext,'')) LIKE '%geimori%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%gu63%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%gu64%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%gu38%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%mywirsh%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%wirsh%' OR lower(title||' '||coalesce(selftext,'')) LIKE '%t38%' ORDER BY created_utc DESC LIMIT 20;"
+            echo "==> 最近抓取运行记录"
+            sudo -u reddit-intel sqlite3 $DB "SELECT run_id, started_at, finished_at, subreddit, posts_found, posts_new, comments_found, status FROM fetch_runs ORDER BY started_at DESC LIMIT 12;" 2>/dev/null || sqlite3 $DB "SELECT run_id, started_at, finished_at, subreddit, posts_found, posts_new, comments_found, status FROM fetch_runs ORDER BY started_at DESC LIMIT 12;"
+            echo "==> collector timer 状态"
+            systemctl list-timers reddit-intel-collector.timer --no-pager || true
+            echo "==> 最近 collector 日志"
+            journalctl -u reddit-intel-collector.service -n 20 --no-pager | tail -15 || true
