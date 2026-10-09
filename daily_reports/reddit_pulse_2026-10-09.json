@@ -1,10 +1,60 @@
 {
-  "batch_id": "21",
+  "batch_id": "22",
   "period": {
-    "start": "2026-10-08T11:00:00+00:00",
-    "end": "2026-10-09T11:11:03.425513+00:00"
+    "start": "2026-10-08T11:00:00",
+    "end": "2026-10-09T11:11:03"
   },
   "posts": [
+    {
+      "post_id": "1x1ic5v",
+      "subreddit": "espresso",
+      "title": "When you put it under the grinds",
+      "selftext": "I accidentally left the puck screen at the bottom of the portafilter. This is what happened to it. Hefty pressure. Time to try shaping it back into its normal shape by putting it on top again.     submitted by    /u/tmttn   [link]   [comments]",
+      "created_utc": "2026-10-09T10:58:22",
+      "score": 0,
+      "num_comments": 0,
+      "permalink": "/r/espresso/comments/1x1ic5v/when_you_put_it_under_the_grinds"
+    },
+    {
+      "post_id": "1x1g6bj",
+      "subreddit": "espresso",
+      "title": "First espresso machine: Profitec Go 2.0 vs Lelit Victoria 3? [$2000]",
+      "selftext": "I am looking for my first espresso machine and until now have been mainly drinking V60 (absolutely love it, currently using a Kingrinder K6 manual grinder). As a fan of specialty light-to-medium roasts with acidic and fruity profiles, one of the main things I look for in a machine is flow control to get the most out of these beans. My current dilemma: The Lelit seems exactly what light roasts need with the Pagaia system, but because the Victoria V3 was just introduced, there aren't many reviews on it yet. The Profitec is cheaper and has a pre-infusion option that its predecessor didn't have, but it doesn't have the active flow control and profiling options like the Lelit. My questions:  Since I haven't had a light roast espresso in a long time (I guess local coffee shops default to darker roasts unless asked specifically), how much will the flow control actually matter for my daily cups? Is the pre-infusion on the Profitec Go 2.0 sufficient to produce good light roast espressos, or should I really aim for the flow control capabilities of the Victoria?  Thank you!    submitted by    /u/Plane-Revolution5555   [link]   [comments]",
+      "created_utc": "2026-10-09T08:45:57",
+      "score": 0,
+      "num_comments": 0,
+      "permalink": "/r/espresso/comments/1x1g6bj/first_espresso_machine_profitec_go_20_vs_lelit"
+    },
+    {
+      "post_id": "1x1g2jr",
+      "subreddit": "pourover",
+      "title": "London coffee suggestions",
+      "selftext": "I’ll be in London in a few days and would love some recs for good specialty coffee. Mainly looking for:  London roasteries, ideally ones where I can have a coffee on site and grab some beans to take home Cafés that really nail V60 / pour-over, where filter is actually a focus  Thanks!    submitted by    /u/WasherSlint   [link]   [comments]",
+      "created_utc": "2026-10-09T08:39:12",
+      "score": 0,
+      "num_comments": 0,
+      "permalink": "/r/pourover/comments/1x1g2jr/london_coffee_suggestions"
+    },
+    {
+      "post_id": "1x1g209",
+      "subreddit": "espresso",
+      "title": "I only make espressos...",
+      "selftext": "I'm using a Breville Barista Express and use the built-in grinder. I have it set to '10' (no other adjustments made). And this is the density of my tamped puck. Does it look fine enough to produce a good shot or is it too fine/coarse?    submitted by    /u/Famous-Ebb3041   [link]   [comments]",
+      "created_utc": "2026-10-09T08:38:16",
+      "score": 0,
+      "num_comments": 0,
+      "permalink": "/r/espresso/comments/1x1g209/i_only_make_espressos"
+    },
+    {
+      "post_id": "1x1fkvo",
+      "subreddit": "espresso",
+      "title": "Replace my Sage/Breville Bambino (not the Plus): upgrade without losing the convenience? [<$1,000 ]",
+      "selftext": "Hi everyone! We had a regular Sage/Breville Bambino (not the Plus) and were happy with the coffee. We drink both espresso and cappuccino, usually for two people, occasionally four when we have guests. The reason we’re replacing it is a horrible high-pitched whine while idle, possibly coil whine. We could hear it from about five meters away at night. We often work at the kitchen table, and sitting near that noise during the day was really unpleasant too. Normal pump or steaming noise is fine, the constant squealing was the problem. Disconnecting the power every time got old, and we’re not sure about ordering another same Bambino. I thought this might be a good opportunity to get something a little more serious, but after reading discussions, I’m unsure what we’d actually gain. My setup and priorities:  DF54 grinder. Order in Europe. Budget: up to roughly US$1,000 equivalent for the machine, ideally less. Ideally 58mm setup, cause we already got a gift of a Normcore 58.5mm tamper, puck screen and 58mm dosing funnel or you suggest just to have again Bambino? I need a steam wand and plan to use good, freshly roasted beans.  The Bambino’s quick start-up was great. I can accept some warm-up time, but I’m reluctant to spend considerably more and end up with a less convenient routine unless there’s a noticeable benefit. For those who upgraded from a Bambino, how much better was the coffee, especially cappuccinos? What became easier, and what became more annoying? Would you recommend a worthwhile 58mm upgrade within this budget, or a different machine at a similar level? I’d particularly appreciate hearing about everyday use and any high-pitched noise while idle. Or should we just simply order another machine and we got a bad luck?    submitted by    /u/freesk8r   [link]   [comments]",
+      "created_utc": "2026-10-09T08:07:19",
+      "score": 0,
+      "num_comments": 0,
+      "permalink": "/r/espresso/comments/1x1fkvo/replace_my_sagebreville_bambino_not_the_plus"
+    },
     {
       "post_id": "1x1f8nv",
       "subreddit": "espresso",
@@ -824,30 +874,60 @@
       "score": 0,
       "num_comments": 0,
       "permalink": "/r/espresso/comments/1x0pj3m/my_eureka_mignon_manuale_stopped_grinding_fine"
+    },
+    {
+      "post_id": "1x0o26h",
+      "subreddit": "pourover",
+      "title": "Big Sur Faysel Abdosh DFW",
+      "selftext": "Coffee Beans Details: • Roaster Name: Big Sur | China 🇨🇳 • Coffee Name: Faysel Abdosh • Origin: Ethiopia • Region: Guji, Hambela • Process: Double Fermentation Washed (24-hour anaerobic whole cherry immersion + 24-hour cold water wet fermentation) • Variety: Heirloom • Altitude: 2350–2400m • Tasting Notes: floral , tangerine candy , Peach, Lemon • Cup Score: Not Specified • Weight: 150g • Roast Level: Ultra Light • Price: 15$  Gear Used: • Grinder: Timemore Sculptor 078 • Brewer: Orea V4 | Open Bottom | Sibarist Booster 45 | Sibarist Fast Filter 1 • Water Recipe: Lotus Drops (4L Distilled Water: 20 drops Magnesium, 5 drops Potassium — \\~50 ppm)  Brew Parameters: • Water Temp: 91°C • Dose: 18g • Grind Size: 1000 microns • Grind Technique: Slow Feed (feeding beans gradually) + Chaff Removal + Blind Shaker post-grind • Roast Date: August 28, 2026 • Preheating: Filter rinsed with hot water inside the brewer strictly to seat it in place | No preheating for the cup or server  Brewing Recipe: • Bloom: Pour 60 ml at a height just before the water stream breaks (flow rate: 6–8 ml/s). Wait a full 60 seconds. • Main Pour: Single pour up to 300 ml at a height just before the stream breaks (flow rate: 8–10 ml/s).  Extraction Metrics: • Total Brew Time: 2:10 • TDS: 1.17% • Extraction Yield: 16.25% • Post-Brew Modifiers: None  Personal Evaluation: • Whole Bean Aroma: Distinct floral/perfumey notes paired with sweetness. • Ground Coffee Aroma: Clear, unmistakable peach notes! • Brewing Aroma: Indescribably beautiful! A rich blend of floral peach and bright lemon notes absolutely top-tier! • Cup Aroma: Aromatic, peachy, and zesty legendary!  Final Verdict: What does a 2-stage fermentation actually mean when handled by a roaster that roasts exceptionally clean? It results in an incredibly clean cup you wouldn't even guess it went through all those heavy fermentation steps! Simply remarkable. On the first sip, floral aromas hit the front of the tongue, followed immediately by lush peach notes. Toward the back, a clear sweetness takes over, finishing with a lingering peach aftertaste. As the cup cools down, it transforms into a mind-blowing harmony of all these flavors. An extraordinary coffee! Truly one of the tastiest washed Ethiopians I've had all year.    submitted by    /u/Ok-Fishing-2234   [link]   [comments]",
+      "created_utc": "2026-10-08T11:05:56",
+      "score": 0,
+      "num_comments": 0,
+      "permalink": "/r/pourover/comments/1x0o26h/big_sur_faysel_abdosh_dfw"
+    },
+    {
+      "post_id": "1x0nzhu",
+      "subreddit": "espresso",
+      "title": "Geimori GU64 Gen 2 got delivered today",
+      "selftext": "A GU64 Gen2 owner’s first impressions — the good and the not-so-good An interesting first-hand review of the GU64 Gen2 over on r/espresso. The owner shared some encouraging feedback on grind quality, noise levels, and value, but also raised fair concerns about the finish, bellows, and burr compatibility. We appreciate this kind of detailed, independent feedback, including the criticisms. We’re sharing it here so the community can follow the discussion and share their own experiences. If you’re using a GU64 Gen2, what has your experience been like so far?    submitted by    /u/Geimori    to    r/Geimori   [link]   [comments]",
+      "created_utc": "2026-10-08T11:02:02",
+      "score": 0,
+      "num_comments": 0,
+      "permalink": "/r/Geimori/comments/1x0nzhu/geimori_gu64_gen_2_got_delivered_today"
+    },
+    {
+      "post_id": "1x0nybm",
+      "subreddit": "pourover",
+      "title": "Weekly Bean Review Thread: What have you been brewing this week? -- Week of October 08, 2026",
+      "selftext": "Tell us what you've been brewing here! Please include as much detail as you'd like, you can consider including:  Which beans, possibly with a link What were the tasting notes from the roaster? What did it taste like to you? What recipe and equipment did you use? How finicky was it? Would you recommend?  Or any other observations you have. Please let us know with as much detail and insight as you'd like to give. Posts that are just \"I am brewing xyz\" with no detail beyond that may be removed.    submitted by    /u/Vernicious   [link]   [comments]",
+      "created_utc": "2026-10-08T11:00:30",
+      "score": 0,
+      "num_comments": 0,
+      "permalink": "/r/pourover/comments/1x0nybm/weekly_bean_review_thread_what_have_you_been"
     }
   ],
   "statistics": {
-    "total_new_posts": 82,
-    "grinder_related_posts": 35,
-    "grinder_ratio": 0.4268,
-    "geimori_mentions": 0,
-    "competitor_mentions": 37,
+    "total_new_posts": 90,
+    "grinder_related_posts": 41,
+    "grinder_ratio": 0.4556,
+    "geimori_mentions": 1,
+    "competitor_mentions": 40,
     "high_signal_topics": 2,
     "alert_count": 2
   },
   "baseline_7d": {
     "static": 1.7143,
     "retention": 1.4286,
-    "grind_consistency": 8.5714,
+    "grind_consistency": 8.4286,
     "burr": 9.0,
     "noise": 4.4286,
-    "workflow": 24.7143,
-    "portability": 8.1429,
-    "price_value": 24.5714,
-    "espresso": 41.7143,
-    "pourover": 29.8571,
+    "workflow": 24.5714,
+    "portability": 8.0,
+    "price_value": 24.4286,
+    "espresso": 41.1429,
+    "pourover": 29.4286,
     "durability": 10.8571,
-    "grind_speed": 15.4286
+    "grind_speed": 15.1429
   },
   "baseline_30d": {
     "static": 0.6667,
@@ -876,87 +956,87 @@
       "mentions": 6,
       "unique_posts": 6,
       "engagement": 0,
-      "avg_7d": 8.5714,
+      "avg_7d": 8.4286,
       "avg_30d": 3.2333,
       "trend": "stable"
     },
     "burr": {
-      "mentions": 11,
-      "unique_posts": 11,
+      "mentions": 12,
+      "unique_posts": 12,
       "engagement": 0,
       "avg_7d": 9.0,
       "avg_30d": 3.2667,
       "trend": "spike"
     },
     "noise": {
-      "mentions": 2,
-      "unique_posts": 2,
+      "mentions": 4,
+      "unique_posts": 4,
       "engagement": 0,
       "avg_7d": 4.4286,
       "avg_30d": 1.7333,
       "trend": "stable"
     },
     "workflow": {
-      "mentions": 20,
-      "unique_posts": 20,
+      "mentions": 23,
+      "unique_posts": 23,
       "engagement": 0,
-      "avg_7d": 24.7143,
+      "avg_7d": 24.5714,
       "avg_30d": 10.0,
       "trend": "stable"
     },
     "portability": {
-      "mentions": 6,
-      "unique_posts": 6,
+      "mentions": 7,
+      "unique_posts": 7,
       "engagement": 0,
-      "avg_7d": 8.1429,
+      "avg_7d": 8.0,
       "avg_30d": 3.5667,
       "trend": "stable"
     },
     "price_value": {
-      "mentions": 19,
-      "unique_posts": 19,
+      "mentions": 23,
+      "unique_posts": 23,
       "engagement": 0,
-      "avg_7d": 24.5714,
+      "avg_7d": 24.4286,
       "avg_30d": 9.6667,
       "trend": "stable"
     },
     "espresso": {
-      "mentions": 39,
-      "unique_posts": 39,
+      "mentions": 43,
+      "unique_posts": 43,
       "engagement": 0,
-      "avg_7d": 41.7143,
+      "avg_7d": 41.1429,
       "avg_30d": 15.6,
       "trend": "stable"
     },
     "pourover": {
-      "mentions": 22,
-      "unique_posts": 22,
+      "mentions": 26,
+      "unique_posts": 26,
       "engagement": 0,
-      "avg_7d": 29.8571,
+      "avg_7d": 29.4286,
       "avg_30d": 11.4667,
       "trend": "stable"
     },
     "durability": {
-      "mentions": 9,
-      "unique_posts": 9,
+      "mentions": 11,
+      "unique_posts": 11,
       "engagement": 0,
       "avg_7d": 10.8571,
       "avg_30d": 4.4667,
       "trend": "stable"
     },
     "grind_speed": {
-      "mentions": 14,
-      "unique_posts": 14,
+      "mentions": 16,
+      "unique_posts": 16,
       "engagement": 0,
-      "avg_7d": 15.4286,
+      "avg_7d": 15.1429,
       "avg_30d": 6.0667,
       "trend": "stable"
     }
   },
   "brand_trends": {
     "geimori": {
-      "mentions": 0,
-      "unique_posts": 0,
+      "mentions": 1,
+      "unique_posts": 1,
       "engagement": 0
     }
   },
@@ -972,13 +1052,13 @@
       "engagement": 0
     },
     "timemore": {
-      "mentions": 4,
-      "unique_posts": 4,
+      "mentions": 5,
+      "unique_posts": 5,
       "engagement": 0
     },
     "kingrinder": {
-      "mentions": 4,
-      "unique_posts": 4,
+      "mentions": 5,
+      "unique_posts": 5,
       "engagement": 0
     },
     "fellow": {
@@ -992,8 +1072,8 @@
       "engagement": 0
     },
     "df_grinders": {
-      "mentions": 5,
-      "unique_posts": 5,
+      "mentions": 6,
+      "unique_posts": 6,
       "engagement": 0
     },
     "niche": {
@@ -1048,20 +1128,19 @@
     }
   },
   "analysis": {
-    "today_in_one_sentence": "过去24小时磨豆机相关讨论中，burr（刀盘）话题出现spike（11条提及，confidence high），static（静电）话题也出现spike（4条提及，confidence medium），但Geimori零提及。",
-    "kpi_summary": "total_new_posts=82, grinder_related_posts=35, grinder_ratio=0.4268, geimori_mentions=0, competitor_mentions=37, alert_count=2",
+    "today_in_one_sentence": "过去24小时磨豆机相关讨论中，burr（磨盘）话题出现明显升温（12条提及，status=spike，confidence=high），static（静电）话题也出现小幅跃升（4条提及，status=spike，confidence=medium）；整体社区讨论仍以espresso（43条）和pourover（26条）为主。",
+    "kpi_summary": "total_new_posts=90, grinder_related_posts=41, grinder_ratio=0.4556, geimori_mentions=1, competitor_mentions=40, alert_count=2",
     "signal_alerts": [
       {
         "topic": "burr",
         "status": "spike",
         "confidence": "high",
-        "evidence_count": 11,
-        "what_happened": "burr话题24h内提及11次，vs_7d=1.22，vs_30d=3.37，出现明显spike。相关帖子包括讨论SSP MP-style burrs安装（Starseeker E64）、Eureka Specialita更换原厂刀盘、以及83mm锥形刀盘手动磨等。",
+        "evidence_count": 12,
+        "what_happened": "磨盘相关讨论24h内出现12条提及（avg_7d=9.0, avg_30d=3.27, vs_7d=1.33, vs_30d=3.67），包括Starseeker E64安装AliExpress SSP MP-style磨盘的首印象帖（r/pourover与r/espresso各一条）、Eureka Specialita长期用户建议更换原厂磨盘的PSA帖，以及Kinu M47 Pour-Over Burrs搭配CAFEC Tsubame Pro的讨论。",
         "permalink": [
           "https://www.reddit.com/r/pourover/comments/1x14w56/starseeker_e64_ssp_mp",
           "https://www.reddit.com/r/espresso/comments/1x12og0/starsseker_e64_ssp_mp",
-          "https://www.reddit.com/r/espresso/comments/1x0wumn/psa_for_long_term_eureka_specialita_owners_that",
-          "https://www.reddit.com/r/espresso/comments/1x1apr2/new_manual_tabletop_coffee_grinder_with_83mm"
+          "https://www.reddit.com/r/espresso/comments/1x0wumn/psa_for_long_term_eureka_specialita_owners_that"
         ],
         "weak_signal": false
       },
@@ -1070,48 +1149,55 @@
         "status": "spike",
         "confidence": "medium",
         "evidence_count": 4,
-        "what_happened": "static话题24h内提及4次，vs_7d=2.33，vs_30d=6.0，出现spike。但样本量较小（4条帖子），需谨慎解读。",
+        "what_happened": "静电话题24h内出现4条提及（avg_7d=1.71, avg_30d=0.67, vs_7d=2.33, vs_30d=6.0），相对7日和30日基线均有明显跃升，但绝对量较小，需持续观察是否为短期波动。",
         "permalink": [],
         "weak_signal": true
       }
     ],
     "top_posts": [
       {
-        "post_id": "1x1f8nv",
-        "title": "Non student setup",
-        "why_it_matters": "用户从Encore ESP升级后强调好磨豆机的重要性，反映入门用户对磨豆机升级的认知。"
+        "post_id": "1x1ic5v",
+        "title": "When you put it under the grinds",
+        "why_it_matters": "用户误将puck screen放在粉饼下方导致变形，反映espresso配件使用中的常见操作失误，与磨豆机/粉饼准备流程相关。"
+      },
+      {
+        "post_id": "1x1g6bj",
+        "title": "First espresso machine: Profitec Go 2.0 vs Lelit Victoria 3? [$2000]",
+        "why_it_matters": "用户明确提到使用Kingrinder K6手磨，并寻求带flow control的机器，体现中高端入门用户对磨豆机与机器搭配的关注。"
       },
       {
         "post_id": "1x1bp2o",
         "title": "The grinder really is a big deal",
-        "why_it_matters": "用户从Breville Barista Pro内置磨豆机升级到独立磨豆机，解决通道效应问题，强调磨豆机对萃取的关键影响。"
+        "why_it_matters": "用户从Breville Barista Pro内置磨豆机升级到独立磨豆机后，通道效应和喷溅问题显著改善，直接印证磨豆机对espresso品质的关键影响。"
       },
       {
         "post_id": "1x14w56",
         "title": "Starseeker E64 SSP MP",
-        "why_it_matters": "讨论AliExpress SSP MP-style刀盘在Starseeker E64上的安装与对齐，反映用户对高性价比刀盘升级的兴趣。"
+        "why_it_matters": "用户安装并对齐AliExpress SSP MP-style磨盘后分享首印象，涉及第三方磨盘兼容性与性能，是burr话题升温的核心证据之一。"
       },
       {
         "post_id": "1x0wumn",
         "title": "PSA for long term Eureka Specialita owners that can't grind fine enough.",
-        "why_it_matters": "长期使用后刀盘磨损导致无法研磨足够细，建议更换原厂刀盘，涉及磨豆机耐久性与维护。"
-      },
-      {
-        "post_id": "1x1apr2",
-        "title": "New Manual Tabletop Coffee Grinder with 83mm Conical Burrs.",
-        "why_it_matters": "新83mm锥形刀盘手动磨豆机出现，用户询问是否有人尝试，反映市场对新型大锥刀手动磨的关注。"
+        "why_it_matters": "长期Eureka Specialita用户建议更换原厂磨盘以解决研磨过粗问题，涉及磨盘磨损与维护，对磨豆机耐用性和售后有参考价值。"
       }
     ],
     "geimori_watch": {
-      "has_mention": false,
-      "detail": "No meaningful Geimori mention in the last 24 hours."
+      "has_mention": true,
+      "detail": "过去24小时有1条Geimori提及（unique_posts=1, engagement=0），但输入未提供具体帖子内容与情感倾向，无法判断讨论主题与严重度。建议人工复核该提及的具体语境，确认是否为产品咨询、使用反馈或对比讨论。"
     },
     "today_actions": [
       {
-        "action": "No immediate action required today",
-        "why": "Geimori零提及，且主要信号（burr spike）为行业通用话题，无直接关联品牌的机会或风险。",
-        "evidence_count": 0,
+        "action": "监测burr话题下第三方磨盘（如AliExpress SSP MP-style）的讨论，评估Geimori磨盘兼容性与替换方案是否可切入",
+        "why": "burr话题24h内12条提及，status=spike，confidence=high，且出现Starseeker E64安装第三方磨盘的具体案例，显示用户对磨盘升级/替换有活跃需求。",
+        "evidence_count": 12,
         "confidence": "high",
+        "category": "Product"
+      },
+      {
+        "action": "复核唯一一条Geimori提及的具体内容与情感倾向",
+        "why": "geimori_mentions=1，但输入未提供帖子正文，无法判断是正面、负面还是中性提及，需人工确认是否需要回应。",
+        "evidence_count": 1,
+        "confidence": "medium",
         "category": "Community"
       }
     ]
