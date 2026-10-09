@@ -116,3 +116,14 @@
   - `tests/test_collector.py::test_search_rss_429_backoff_retry`（新增：429 退避重试）
   - `tests/test_collector.py::test_parse_rss_feed_updated_fallback`（新增：updated fallback 解析 created_utc）
 - **版本**：v0.2.6 → v0.2.7
+
+### RGI-012：Daily 窗口起点漂移 — 边界帖被 9 分钟漏掉（Geimori GU64）
+- **现象**：用户反馈 Daily Pulse 无 Geimori 提及，但库内有 Geimori GU64 帖（1x0nzhu created 2026-10-08 11:02:02 UTC）
+- **根因**：`_resolve_period`（main.py）把 period_start floor 到整点（11:00），但 `build_daily_context`（aggregate.py）实际查询用 `now - 24h`（不 floor，如 11:11:03）→ created 11:02 的帖在批次元数据窗口内、查询窗口外 → 两天连续漏报（入库 13:37 又晚于当天批次创建 13:25）
+- **修复**：
+  - `app/aggregate.py`：`build_daily_context` 新增 `start/end` 参数，缺省起点 = `_floor_to_hour(now - 24h)`，与 `_resolve_period` 语义一致
+  - `app/main.py`：daily 分支把 `period_start/period_end` 传给 `build_daily_context`，批次元数据与查询窗口完全一致
+- **回归用例**：
+  - `tests/test_aggregate.py::test_daily_context_window_matches_batch_period`
+  - `tests/test_aggregate.py::test_daily_context_default_start_floors_to_hour`
+- **版本**：v0.2.8

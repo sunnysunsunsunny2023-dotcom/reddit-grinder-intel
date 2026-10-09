@@ -247,16 +247,30 @@ def baseline_avg(series: Dict[str, List[int]], days: int) -> Dict[str, float]:
     return out
 
 
-def build_daily_context(conn, subreddit: Optional[str] = None) -> Dict[str, Any]:
+def _floor_to_hour(t: dt.datetime) -> dt.datetime:
+    """把 datetime 向下取整到整点（与 main._resolve_period 语义一致）。"""
+    return t.replace(minute=0, second=0, microsecond=0)
+
+
+def build_daily_context(
+    conn,
+    subreddit: Optional[str] = None,
+    start: Optional[dt.datetime] = None,
+    end: Optional[dt.datetime] = None,
+) -> Dict[str, Any]:
     """组装 Daily API 所需的确定性上下文（不含 LLM 产物）。
+
+    start/end 与 API 层 _resolve_period 保持一致：调用方传入已解析的
+    period_start/period_end；缺省时用 floor(now-24h) 作为起点，避免
+    窗口起点秒级漂移导致边界帖被漏（RGI-009 回归）。
 
     Returns:
         {posts, statistics, baseline_7d, baseline_30d, topic_trends,
          brand_trends, competitor_trends, signal_alerts, top_posts}
     """
     now = _now()
-    start_24h = now - dt.timedelta(hours=24)
-    posts_24h = query_posts(conn, start_24h, subreddit=subreddit)
+    start_24h = start or _floor_to_hour(now - dt.timedelta(hours=24))
+    posts_24h = query_posts(conn, start_24h, end=end, subreddit=subreddit)
 
     series_7d = topic_series(conn, 7, subreddit=subreddit)
     series_30d = topic_series(conn, 30, subreddit=subreddit)

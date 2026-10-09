@@ -185,7 +185,12 @@ def analysis_batch(
         if report_type == "weekly":
             context = build_weekly_context(conn, subreddit=subreddit)
         else:
-            context = aggregate.build_daily_context(conn, subreddit=subreddit)
+            context = aggregate.build_daily_context(
+                conn,
+                subreddit=subreddit,
+                start=period_start,
+                end=period_end,
+            )
 
         if limit:
             context["posts"] = context["posts"][:limit]

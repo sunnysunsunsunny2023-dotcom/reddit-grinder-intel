@@ -11,6 +11,7 @@ from app.trends import (
     needs_alert,
     WEAK_EVIDENCE,
 )
+from tests.conftest import make_post
 
 
 def test_compute_kpi(sample_posts):
@@ -119,3 +120,88 @@ def test_needs_alert():
 def test_keywords_normalize():
     assert keywords.has_any("I love my GRINDER", keywords.GRINDER_KEYWORDS)
     assert not keywords.has_any("cat kettle", keywords.GRINDER_KEYWORDS)
+
+
+# ------------------------------------------------------------
+# RGI-009 回归：build_daily_context 窗口起点必须与 _resolve_period 一致
+# ------------------------------------------------------------
+def _make_db(tmp_path, posts: list) -> Any:
+    """建内存 SQLite：插入 posts（created_utc 为 naive UTC，与生产一致）。"""
+    import sqlite3
+    from collector import storage
+
+    db_path = tmp_path / "rgi009.db"
+    conn = storage.connect(str(db_path))
+    storage.init_schema(conn, "sql/schema.sql")
+    cur = conn.cursor()
+    for p in posts:
+        cur.execute(
+            "INSERT INTO reddit_posts"
+            " (post_id, subreddit, title, selftext, created_utc, score,"
+            "  num_comments, permalink)"
+            " VALUES (?,?,?,?,?,?,?,?)",
+            (
+                p["post_id"], p["subreddit"], p["title"], p["selftext"],
+                p["created_utc"], p["score"], p["num_comments"], p["permalink"],
+            ),
+        )
+    conn.commit()
+    return conn
+
+
+def test_daily_context_window_matches_batch_period(tmp_path):
+    """边界帖（created 在 floor(now-24h) 与 now-24h 之间）必须进入窗口。
+
+    根因复现：batch period_start=floor(now-24h)=11:00，而旧 build_daily_context
+    用 now-24h=11:11 起查，11:02 的 Geimori GU64 帖被漏 → geimori_mentions=0。
+    修复后传 start=floor → 该帖被包含。
+    """
+    import datetime as dt
+
+    now = dt.datetime.now(dt.timezone.utc)
+    floor_start = now.replace(minute=0, second=0, microsecond=0) - dt.timedelta(hours=24)
+    edge_post_time = floor_start + dt.timedelta(minutes=2)  # 如 11:02
+
+    # 确保边界帖不在旧窗口内（now-24h 之前）
+    old_start = now - dt.timedelta(hours=24)
+    assert edge_post_time < old_start, "测试前提：边界帖必须早于旧的 now-24h 起点"
+
+    edge_post = make_post(
+        "edge_geimori", "Geimori GU64 Gen 2 got delivered today",
+        "first impressions, retention, burr",
+        created=edge_post_time,
+    )
+    conn = _make_db(tmp_path, [edge_post])
+    try:
+        ctx = aggregate.build_daily_context(
+            conn, start=floor_start, end=now,
+        )
+        kpi = ctx["statistics"]
+        assert kpi["total_new_posts"] == 1, f"边界帖必须被包含, got {kpi}"
+        assert kpi["geimori_mentions"] == 1
+    finally:
+        conn.close()
+
+
+def test_daily_context_default_start_floors_to_hour(tmp_path):
+    """不传 start 时默认起点 = floor(now-24h)，与 _resolve_period 一致。"""
+    import datetime as dt
+
+    now = dt.datetime.now(dt.timezone.utc)
+    floor_start = now.replace(minute=0, second=0, microsecond=0) - dt.timedelta(hours=24)
+    edge_post_time = floor_start + dt.timedelta(minutes=2)
+
+    # 该帖在默认 floor 窗口内
+    edge_post = make_post(
+        "edge_geimori2", "Geimori GU63 question",
+        "what's the real story",
+        created=edge_post_time,
+    )
+    conn = _make_db(tmp_path, [edge_post])
+    try:
+        ctx = aggregate.build_daily_context(conn)
+        kpi = ctx["statistics"]
+        assert kpi["total_new_posts"] == 1, f"默认窗口必须含边界帖, got {kpi}"
+        assert kpi["geimori_mentions"] == 1
+    finally:
+        conn.close()
