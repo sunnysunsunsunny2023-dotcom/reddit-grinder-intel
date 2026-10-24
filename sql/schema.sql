@@ -156,6 +156,7 @@ CREATE TABLE IF NOT EXISTS reply_drafts (
     draft_id          INTEGER PRIMARY KEY AUTOINCREMENT,
     task_id           INTEGER NOT NULL REFERENCES reply_tasks(task_id) ON DELETE CASCADE,
     draft_text        TEXT NOT NULL,
+    reason            TEXT,
     model_provider    TEXT NOT NULL DEFAULT 'deepseek',
     model_name        TEXT,
     brand_voice_version TEXT NOT NULL DEFAULT 'v1',
@@ -172,6 +173,7 @@ CREATE TABLE IF NOT EXISTS reply_approvals (
     task_id       INTEGER NOT NULL REFERENCES reply_tasks(task_id) ON DELETE CASCADE,
     draft_version INTEGER NOT NULL DEFAULT 1,
     reviewer_id   TEXT,
+    reviewer_name TEXT,
     action        TEXT NOT NULL
                   CHECK (action IN ('approve','edit_approve','regenerate',
                                     'reject','skip')),

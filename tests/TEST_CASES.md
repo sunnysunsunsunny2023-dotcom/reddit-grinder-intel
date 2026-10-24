@@ -147,3 +147,18 @@
   - `tests/test_reply_store.py`：幂等、分类更新+草稿版本、队列、统计、缺失查找
   - `tests/test_reply_api.py`：鉴权 401、dry_run 投诉、非 dry_run 幂等落库（tasks=1/drafts=1）、无回复需求、queue+stats
 - **版本**：v0.2.9（Phase 1 核心闭环；Phase 2 飞书审批待续）
+
+### RGI-014：Geimori Reply System V2.0 Phase 2 — 飞书审批闭环（状态机/并发锁/签名校验/人工发布交接）
+- **需求**：需求文档模块四 7.1 审核卡片结构 + 7.2 审核工作流（见 docs/Geimori_Reddit_Reply_System_V2.0.md）
+- **新增**：
+  - `app/feishu_review.py`：飞书交互审核卡片构造（优先级/Subreddit/产品/原帖链接/评论原文/上下文/AI 草稿/推荐理由/状态 + Approve/Edit&Approve/Regenerate/Reject/Skip 五按钮）；`verify_callback()` HMAC-SHA256 签名 + verification token 双重校验；群机器人 webhook 推送（复用 youtube-kol-monitor 的 send_feishu_card 模式，任何异常不抛出）
+  - `app/reply_store.py`：审批状态机 `apply_approval`（approve/edit_approve/reject/skip/regenerate，仅 draft_ready 可审批 → 并发冲突返回 conflict）；`effective_approval`（同一任务唯一有效审批，新动作 supersede 旧记录）；`manual_publish`（仅 approved 可发布、已发布拒绝重复、final_text 使用锁定批准文本）；`audit_log`
+  - `app/main.py`：`POST /api/reddit/reply-approve`（人工/Coze 审批，reviewer_id 必填）、`POST /api/feishu/reply-callback`（事件订阅回调：签名/令牌校验，未配置 FEISHU_APP_SECRET/VERIFICATION_TOKEN 时 503 明确提示，校验失败 403，url_verification 挑战回显，卡片 action 触发审批）、`POST /api/geimori/review-push`（dry_run 不发真实卡片）、`GET /api/geimori/audit-log`、`POST /api/geimori/manual-publish`
+  - `sql/schema.sql`：reply_approvals 补 reviewer_name 列、reply_drafts 补 reason 列（线上库走 `_migrate_reply_approvals_reviewer_name` / `_migrate_reply_drafts_reason` 幂等迁移）
+- **踩坑**：
+  - `_set_task_status` 初始传 action 名（reject/skip）不符合 status CHECK（rejected/skipped）→ 映射 target 状态
+  - manual_publish 重复调用先命中 status 检查（published≠approved）而非已发布检查 → 先查 reply_publications 已有 published 记录返回 "already published"（409）
+  - 飞书回调接口若用 pydantic 模型收 body，TestClient 传原始字符串 body 时 422 → 改为直接收 Request + 手动 json.loads，签名基于原始 body_raw
+- **回归用例**：
+  - `tests/test_reply_approval.py`：approve 正常流转+重复审批 409；edit_approve 缺文本 422/带文本锁定；reject/skip 终态；manual_publish 未审批 422/审批后发布成功/重复 409；regenerate 仅审计不改状态；audit-log；review-push dry_run（五按钮齐全+评论原文+草稿）；回调未配置 503/错误签名 403/challenge 回显/卡片 action approve+防并发 409/缺头 403
+- **版本**：v0.2.10（Phase 2 飞书审批闭环；Phase 3 ChatGPT MCP/知识库待续）

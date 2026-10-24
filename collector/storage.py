@@ -69,12 +69,32 @@ def connect(db_path: str) -> sqlite3.Connection:
     return conn
 
 
+def _migrate_reply_approvals_reviewer_name(conn) -> None:
+    """线上库已有 reply_approvals 表时幂等补列（SQLite 无 ADD COLUMN IF NOT EXISTS）。"""
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(reply_approvals)")}
+    if "reviewer_name" not in cols:
+        conn.execute("ALTER TABLE reply_approvals ADD COLUMN reviewer_name TEXT")
+        conn.commit()
+        logger.info("Migrated reply_approvals: add reviewer_name")
+
+
+def _migrate_reply_drafts_reason(conn) -> None:
+    """线上库已有 reply_drafts 表时幂等补列 reason（推荐理由展示用）。"""
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(reply_drafts)")}
+    if "reason" not in cols:
+        conn.execute("ALTER TABLE reply_drafts ADD COLUMN reason TEXT")
+        conn.commit()
+        logger.info("Migrated reply_drafts: add reason")
+
+
 def init_schema(conn, schema_sql_path: str) -> None:
     """执行 sql/schema.sql（幂等）。"""
     with open(schema_sql_path, "r", encoding="utf-8") as fh:
         sql = fh.read()
     conn.executescript(sql)
     _migrate_created_utc(conn)
+    _migrate_reply_approvals_reviewer_name(conn)
+    _migrate_reply_drafts_reason(conn)
     logger.info("Schema initialized from %s", schema_sql_path)
 
 

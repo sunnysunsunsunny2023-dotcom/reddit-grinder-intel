@@ -11,11 +11,12 @@ ADR-001：LLM 分析（DeepSeek）在本服务内执行，Coze 只渲染与推�
 from __future__ import annotations
 
 import datetime as dt
+import json
 import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi import FastAPI, Header, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from analyst.analyzer import analyze_batch, build_weekly_context
@@ -23,6 +24,7 @@ from analyst.mention_classifier import classify_comment
 from analyst.reply_engine import generate_draft_reply
 from . import aggregate
 from . import db
+from . import feishu_review
 from . import reply_store
 from .trends import classify_signal
 
@@ -441,5 +443,216 @@ def reply_stats(
     conn = db.get_conn()
     try:
         return reply_store.stats(conn)
+    finally:
+        db.put_conn(conn)
+
+
+# ------------------------------------------------------------
+# Phase 2：飞书审批闭环
+# 状态机：draft_ready → approved/rejected/skipped → published
+# 并发锁：仅 draft_ready 可被审批；重复操作返回 conflict
+# 回调：签名（HMAC-SHA256）+ verification token 双重校验
+# 红线：未授权不发布；仅卡片链接不视为审批
+# ------------------------------------------------------------
+
+_ALLOWED_APPROVAL_ACTIONS = ("approve", "edit_approve", "regenerate", "reject", "skip")
+
+
+class ApproveRequest(BaseModel):
+    task_id: int
+    action: str
+    draft_version: int = 1
+    reviewer_id: str = ""
+    reviewer_name: Optional[str] = None
+    approved_text: Optional[str] = None
+
+
+@app.post("/api/reddit/reply-approve")
+def reply_approve(
+    req: ApproveRequest,
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+) -> Dict[str, Any]:
+    """执行一次审批动作（人工/Coze 调用，带鉴权）。
+
+    approve:     批准当前草稿，锁定 approved_text = draft_text
+    edit_approve:批准修改后的文本（approved_text 必填）
+    regenerate:  记录审计，调用方随后可重新生成草稿（新版本回 draft_ready）
+    reject/skip: 拒绝/跳过，任务进入终态
+    """
+    _require_key(x_api_key)
+    if req.action not in _ALLOWED_APPROVAL_ACTIONS:
+        raise HTTPException(status_code=422, detail=f"invalid action: {req.action}")
+    if not req.reviewer_id:
+        raise HTTPException(status_code=422, detail="reviewer_id is required")
+    conn = db.get_conn()
+    try:
+        result = reply_store.apply_approval(
+            conn,
+            task_id=req.task_id,
+            draft_version=req.draft_version,
+            action=req.action,
+            reviewer_id=req.reviewer_id,
+            reviewer_name=req.reviewer_name,
+            approved_text=req.approved_text,
+        )
+        if not result["ok"]:
+            status_code = 409 if result.get("conflict") else 422
+            raise HTTPException(status_code=status_code, detail=result.get("error"))
+        return result
+    finally:
+        db.put_conn(conn)
+
+
+@app.post("/api/geimori/review-push")
+def review_push(
+    status: str = Query("draft_ready", description="task status to push"),
+    limit: int = Query(5, ge=1, le=20),
+    dry_run: bool = Query(False, description="dry_run 不发送真实卡片"),
+    webhook_url: Optional[str] = Query(None, description="覆盖 FEISHU_WEBHOOK_URL"),
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+) -> Dict[str, Any]:
+    """把待审核队列渲染为飞书交互卡片并推送（群机器人 webhook）。
+
+    dry_run=True 时不发真实请求，返回卡片 JSON 供人工预览/测试。
+    """
+    _require_key(x_api_key)
+    conn = db.get_conn()
+    try:
+        tasks = reply_store.queue_tasks(conn, status=status, limit=limit)
+        cards = []
+        for t in tasks:
+            draft = reply_store.latest_draft(conn, t["task_id"])
+            cards.append(feishu_review.build_review_card(t, draft))
+        if not cards:
+            return {"ok": True, "count": 0, "message": "queue empty"}
+        url = webhook_url or os.environ.get("FEISHU_WEBHOOK_URL", "")
+        result = feishu_review.push_review_cards(cards, webhook_url=url, dry_run=dry_run)
+        result["count"] = len(cards)
+        return result
+    finally:
+        db.put_conn(conn)
+
+
+@app.post("/api/feishu/reply-callback")
+async def feishu_reply_callback(
+    request: Request,
+) -> Dict[str, Any]:
+    """飞书事件订阅回调（卡片按钮 action 触发）。
+
+    校验顺序：
+      1. 签名校验（X-Lark-Signature / X-Lark-Request-Timestamp / X-Lark-Request-Nonce）
+      2. verification token 校验（body.token）
+      3. 解析 card.action.value → 执行审批（task_id/action/draft_version）
+      4. 校验通过才调用 apply_approval；校验失败一律 403/503，不做审批
+
+    未配置 FEISHU_APP_SECRET/FEISHU_VERIFICATION_TOKEN 时返回 503 明确提示。
+    """
+    signature = request.headers.get("X-Lark-Signature", "")
+    ts = request.headers.get("X-Lark-Request-Timestamp", "")
+    nonce = request.headers.get("X-Lark-Request-Nonce", "")
+    body_raw = (await request.body()).decode("utf-8", errors="replace")
+    try:
+        body = json.loads(body_raw) if body_raw else {}
+    except Exception:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail="invalid JSON body")
+
+    ok, err = feishu_review.verify_callback(ts, nonce, body_raw, signature, body)
+    if not ok:
+        if "未配置" in err:
+            raise HTTPException(status_code=503, detail=err)
+        raise HTTPException(status_code=403, detail=err)
+
+    # URL 校验挑战（飞书事件订阅首次配置）
+    if body.get("type") == "url_verification" or body.get("challenge"):
+        return {"challenge": body.get("challenge")}
+
+    # 解析卡片 action
+    header = body.get("header") or {}
+    event = body.get("event") or {}
+    action = event.get("action") or {}
+    value = action.get("value") or {}
+    task_id = value.get("task_id")
+    act = value.get("action")
+    draft_version = int(value.get("draft_version") or 1)
+    if not task_id or act not in _ALLOWED_APPROVAL_ACTIONS:
+        raise HTTPException(status_code=422, detail="invalid card action value")
+
+    reviewer_id = header.get("operator_id") or event.get("operator", {}).get("open_id") or ""
+    reviewer_name = header.get("operator_name") or ""
+    if not reviewer_id:
+        raise HTTPException(status_code=403, detail="missing reviewer identity from callback")
+
+    conn = db.get_conn()
+    try:
+        result = reply_store.apply_approval(
+            conn,
+            task_id=int(task_id),
+            draft_version=draft_version,
+            action=act,
+            reviewer_id=reviewer_id,
+            reviewer_name=reviewer_name,
+        )
+        if not result["ok"]:
+            status_code = 409 if result.get("conflict") else 422
+            raise HTTPException(status_code=status_code, detail=result.get("error"))
+        return {"ok": True, "task_id": int(task_id), "action": act,
+                "task_status": result["task"]["status"]}
+    finally:
+        db.put_conn(conn)
+
+
+@app.get("/api/geimori/audit-log")
+def audit_log(
+    limit: int = Query(50, ge=1, le=200),
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+) -> Dict[str, Any]:
+    """审核日志（审批 + 发布记录）。"""
+    _require_key(x_api_key)
+    conn = db.get_conn()
+    try:
+        rows = reply_store.audit_log(conn, limit=limit)
+        return {"count": len(rows), "log": rows}
+    finally:
+        db.put_conn(conn)
+
+
+class ManualPublishRequest(BaseModel):
+    task_id: int
+    operator_id: str
+    operator_name: Optional[str] = None
+    reddit_account: Optional[str] = None
+    reddit_reply_id: Optional[str] = None
+    published_url: Optional[str] = None
+    note: Optional[str] = None
+
+
+@app.post("/api/geimori/manual-publish")
+def manual_publish(
+    req: ManualPublishRequest,
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+) -> Dict[str, Any]:
+    """人工发布交接（Phase 2：无自动发帖授权时的最终交付方式）。
+
+    仅 approved 任务可发布；已 published 拒绝重复；final_text 使用锁定的批准文本。
+    """
+    _require_key(x_api_key)
+    if not req.operator_id:
+        raise HTTPException(status_code=422, detail="operator_id is required")
+    conn = db.get_conn()
+    try:
+        result = reply_store.manual_publish(
+            conn,
+            task_id=req.task_id,
+            operator_id=req.operator_id,
+            operator_name=req.operator_name,
+            reddit_account=req.reddit_account,
+            reddit_reply_id=req.reddit_reply_id,
+            published_url=req.published_url,
+            note=req.note,
+        )
+        if not result["ok"]:
+            status_code = 409 if "already published" in result.get("error", "") else 422
+            raise HTTPException(status_code=status_code, detail=result.get("error"))
+        return result
     finally:
         db.put_conn(conn)
