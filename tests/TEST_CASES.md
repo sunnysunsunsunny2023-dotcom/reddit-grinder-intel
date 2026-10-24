@@ -127,3 +127,23 @@
   - `tests/test_aggregate.py::test_daily_context_window_matches_batch_period`
   - `tests/test_aggregate.py::test_daily_context_default_start_floors_to_hour`
 - **版本**：v0.2.8
+
+### RGI-013：Geimori Reply System V2.0 Phase 1 — 评论增量监控 + AI 分类 + draft-reply API
+- **需求**：需求文档《Geimori Reddit 智能监控与 AI 回复系统 V2.0》Phase 1 核心闭环（见 docs/Geimori_Reddit_Reply_System_V2.0.md）
+- **新增**：
+  - `sql/schema.sql`：新增 reply_tasks / reply_drafts / reply_approvals / reply_publications 四张表（UNIQUE(platform,post_id,comment_id) 幂等、status 状态机 CHECK、外键级联），不影响现有 6 张表
+  - `collector/comment_watcher.py`：独立增量回扫（候选帖 = 近 watch_days 品牌帖优先 + 活跃帖；Comment ID 去重；单帖失败不阻塞；多 subreddit 间 120s 缓冲）
+  - `analyst/mention_classifier.py`：DeepSeek 语义分类（reply_needed + P1/P2/P3/Skip + category/product/sentiment/reason/confidence）；未配置 key 时规则降级（投诉→P1、技术→P2、购买→P2、正面→P3 不回复）；禁止为曝光自动回复所有提及
+  - `analyst/reply_engine.py`：统一 Brand Voice 草稿生成（1-3 句、非模板、不贬竞、不虚构、不公开索要个人信息、敏感转 DM；json_mode 返回 draft_reply）
+  - `app/reply_store.py`：任务幂等创建 / 分类更新 / 草稿版本递增 / 队列 / 统计
+  - `app/main.py`：`POST /api/geimori/draft-reply`（dry_run 不落库；非 dry_run 幂等落库；已有草稿直接返回不重复生成）、`GET /api/geimori/reply-queue`、`GET /api/geimori/reply-stats`
+- **踩坑**：
+  - SQLite `INSERT ... ON CONFLICT DO NOTHING` 后 `cur.rowcount` 可能为 0 但 lastrowid 无效 → create_task 冲突时显式 rollback 再 find_task 返回现有行
+  - draft-reply 幂等：仅 create_task 幂等不够，第二次调用仍会重新生成草稿（drafts=2）→ 已有草稿且 status∈{draft_ready,pending_approval} 时直接返回 latest_draft
+  - API 测试 fake LLM 需按 system prompt 区分分类/回复返回不同 JSON，否则分类拿到 draft 格式导致 reply_needed=False
+- **回归用例**：
+  - `tests/test_comment_watcher.py`：候选帖选择（品牌优先/忽略旧帖）、Comment ID 去重增量、reply 四表存在
+  - `tests/test_mention_classifier.py`：LLM 分类、规则降级（投诉/正面/技术）、reply_needed_filter、确定性
+  - `tests/test_reply_store.py`：幂等、分类更新+草稿版本、队列、统计、缺失查找
+  - `tests/test_reply_api.py`：鉴权 401、dry_run 投诉、非 dry_run 幂等落库（tasks=1/drafts=1）、无回复需求、queue+stats
+- **版本**：v0.2.9（Phase 1 核心闭环；Phase 2 飞书审批待续）

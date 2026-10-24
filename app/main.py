@@ -19,8 +19,11 @@ from fastapi import FastAPI, Header, HTTPException, Query
 from pydantic import BaseModel
 
 from analyst.analyzer import analyze_batch, build_weekly_context
+from analyst.mention_classifier import classify_comment
+from analyst.reply_engine import generate_draft_reply
 from . import aggregate
 from . import db
+from . import reply_store
 from .trends import classify_signal
 
 logger = logging.getLogger(__name__)
@@ -270,5 +273,173 @@ def analysis_complete(
             raise HTTPException(status_code=404, detail="batch not found")
         conn.commit()
         return {"batch_id": str(req.batch_id), "status": req.status}
+    finally:
+        db.put_conn(conn)
+
+
+# ------------------------------------------------------------
+# Geimori Reply System — Phase 1：draft-reply / 审核队列 / 统计
+# （需求文档 五、模块三；四张 reply 表见 sql/schema.sql）
+# 仅生成草稿，绝不自动发布（发布在 Phase 4，默认关闭）
+# ------------------------------------------------------------
+class DraftReplyRequest(BaseModel):
+    platform: str = "reddit"
+    subreddit: Optional[str] = None
+    post_id: str
+    comment_id: str
+    comment: str
+    context: Optional[str] = None
+    permalink: Optional[str] = None
+    product: Optional[str] = None
+    dry_run: bool = False  # dry_run 时不落库（模拟数据测试）
+
+
+@app.post("/api/geimori/draft-reply")
+def draft_reply(
+    req: DraftReplyRequest,
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+) -> Dict[str, Any]:
+    """为一条评论生成品牌草稿回复（幂等：同一评论只建一个 task）。
+
+    流程：
+      1. 校验评论非空
+      2. 幂等创建 reply_task（UNIQUE platform+post_id+comment_id）
+      3. 分类（reply_needed + priority）
+      4. 若需回复 → 生成草稿（Brand Voice）→ 落 reply_drafts
+      5. 返回草稿 + 元数据（requires_human_review 恒为 True）
+    """
+    _require_key(x_api_key)
+    if not req.comment or not req.comment.strip():
+        raise HTTPException(status_code=422, detail="comment is required")
+    conn = db.get_conn()
+    try:
+        if req.dry_run:
+            cls = classify_comment(req.comment, context=req.context or "", product=req.product or "")
+            if not cls.get("reply_needed"):
+                return {
+                    "dry_run": True, "reply_needed": False,
+                    "priority": cls.get("priority", "P3"),
+                    "category": cls.get("category", "brand_mention"),
+                    "draft_reply": "", "requires_human_review": True,
+                }
+            draft = generate_draft_reply(
+                req.comment, context=req.context or "",
+                product=req.product or "", classification=cls,
+            )
+            return {
+                "dry_run": True, "reply_needed": True,
+                "priority": cls.get("priority", "P2"),
+                "category": cls.get("category", "technical_question"),
+                "draft_reply": draft["draft_reply"],
+                "requires_human_review": True,
+                "classification": cls,
+            }
+
+        task = reply_store.create_task(
+            conn,
+            platform=req.platform,
+            subreddit=req.subreddit,
+            post_id=req.post_id,
+            comment_id=req.comment_id,
+            original_text=req.comment,
+            context=req.context,
+            permalink=req.permalink,
+            product=req.product,
+        )
+        task_id = task["task_id"]
+
+        # 幂等：已有草稿且状态处于已生成/审核阶段时直接返回，不重复创建
+        existing_draft = reply_store.latest_draft(conn, task_id)
+        if existing_draft and task.get("status") in (
+            "draft_ready", "pending_approval",
+        ):
+            return {
+                "task_id": task_id,
+                "reply_needed": True,
+                "priority": task.get("priority", "P2"),
+                "category": task.get("category", "technical_question"),
+                "draft_reply": existing_draft["draft_text"],
+                "draft_version": existing_draft["draft_version"],
+                "brand_voice_version": existing_draft["brand_voice_version"],
+                "knowledge_version": existing_draft["knowledge_version"],
+                "requires_human_review": True,
+                "status": task.get("status"),
+            }
+
+        cls = classify_comment(
+            req.comment, context=req.context or "", product=req.product or ""
+        )
+        reply_store.update_task_classification(conn, task_id, cls)
+
+        if not cls.get("reply_needed"):
+            return {
+                "task_id": task_id,
+                "reply_needed": False,
+                "priority": cls.get("priority", "P3"),
+                "category": cls.get("category", "brand_mention"),
+                "draft_reply": "",
+                "requires_human_review": True,
+                "status": task.get("status") or "classified",
+            }
+
+        draft = generate_draft_reply(
+            req.comment, context=req.context or "",
+            product=req.product or "", classification=cls,
+        )
+        draft_version = reply_store.insert_draft(
+            conn, task_id, draft["draft_reply"],
+            draft["model_provider"], draft["model_name"],
+            draft["brand_voice_version"], draft["knowledge_version"],
+        )
+        reply_store.mark_draft_ready(conn, task_id)
+
+        return {
+            "task_id": task_id,
+            "reply_needed": True,
+            "priority": cls.get("priority", "P2"),
+            "category": cls.get("category", "technical_question"),
+            "draft_reply": draft["draft_reply"],
+            "draft_version": draft_version,
+            "brand_voice_version": draft["brand_voice_version"],
+            "knowledge_version": draft["knowledge_version"],
+            "requires_human_review": True,
+            "status": "draft_ready",
+            "classification": cls,
+        }
+    finally:
+        db.put_conn(conn)
+
+
+@app.get("/api/geimori/reply-queue")
+def reply_queue(
+    status: str = Query("draft_ready", description="task status"),
+    limit: int = Query(50, ge=1, le=200),
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+) -> Dict[str, Any]:
+    """获取待审核任务队列（Phase 2 飞书审批消费）。"""
+    _require_key(x_api_key)
+    if status not in reply_store.TASK_STATUSES:
+        raise HTTPException(status_code=422, detail=f"invalid status: {status}")
+    conn = db.get_conn()
+    try:
+        tasks = reply_store.queue_tasks(conn, status=status, limit=limit)
+        out = []
+        for t in tasks:
+            draft = reply_store.latest_draft(conn, t["task_id"])
+            out.append({"task": t, "latest_draft": draft})
+        return {"status": status, "count": len(out), "tasks": out}
+    finally:
+        db.put_conn(conn)
+
+
+@app.get("/api/geimori/reply-stats")
+def reply_stats(
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+) -> Dict[str, Any]:
+    """回复系统统计（Dashboard 用）。"""
+    _require_key(x_api_key)
+    conn = db.get_conn()
+    try:
+        return reply_store.stats(conn)
     finally:
         db.put_conn(conn)

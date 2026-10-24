@@ -119,3 +119,87 @@ CREATE TABLE IF NOT EXISTS analysis_results (
 -- ------------------------------------------------------------
 -- JSONL 只允许 backup/export，不作为生产主数据。
 -- ------------------------------------------------------------
+
+-- ------------------------------------------------------------
+-- Geimori Reply System V2.0 — Phase 1：回复任务/草稿/审批/发布
+-- （新增四张表，不影响现有 Daily/Weekly 六张表）
+-- ------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS reply_tasks (
+    task_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    platform       TEXT NOT NULL DEFAULT 'reddit',
+    subreddit      TEXT,
+    post_id        TEXT NOT NULL,
+    comment_id     TEXT NOT NULL,
+    original_text  TEXT NOT NULL,
+    context        TEXT,
+    permalink      TEXT,
+    product        TEXT,
+    category       TEXT,
+    priority       TEXT CHECK (priority IN ('P1','P2','P3','Skip')),
+    reply_needed   INTEGER NOT NULL DEFAULT 0,
+    status         TEXT NOT NULL DEFAULT 'new'
+                   CHECK (status IN ('new','classified','draft_ready',
+                                     'pending_approval','approved','rejected',
+                                     'skipped','published','failed')),
+    created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (platform, post_id, comment_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_reply_tasks_status
+    ON reply_tasks (status, priority);
+CREATE INDEX IF NOT EXISTS idx_reply_tasks_post
+    ON reply_tasks (post_id);
+
+CREATE TABLE IF NOT EXISTS reply_drafts (
+    draft_id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id           INTEGER NOT NULL REFERENCES reply_tasks(task_id) ON DELETE CASCADE,
+    draft_text        TEXT NOT NULL,
+    model_provider    TEXT NOT NULL DEFAULT 'deepseek',
+    model_name        TEXT,
+    brand_voice_version TEXT NOT NULL DEFAULT 'v1',
+    knowledge_version TEXT NOT NULL DEFAULT 'v1',
+    draft_version     INTEGER NOT NULL DEFAULT 1,
+    created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_reply_drafts_task
+    ON reply_drafts (task_id, draft_version);
+
+CREATE TABLE IF NOT EXISTS reply_approvals (
+    approval_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id       INTEGER NOT NULL REFERENCES reply_tasks(task_id) ON DELETE CASCADE,
+    draft_version INTEGER NOT NULL DEFAULT 1,
+    reviewer_id   TEXT,
+    action        TEXT NOT NULL
+                  CHECK (action IN ('approve','edit_approve','regenerate',
+                                    'reject','skip')),
+    approved_text TEXT,
+    status        TEXT NOT NULL DEFAULT 'pending'
+                  CHECK (status IN ('pending','effective','superseded','rejected')),
+    approved_at   TIMESTAMP,
+    created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_reply_approvals_task
+    ON reply_approvals (task_id, status);
+
+CREATE TABLE IF NOT EXISTS reply_publications (
+    publication_id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id                INTEGER NOT NULL REFERENCES reply_tasks(task_id) ON DELETE CASCADE,
+    approved_draft_version INTEGER NOT NULL,
+    reddit_account         TEXT,
+    target_comment_id      TEXT,
+    reddit_reply_id        TEXT,
+    published_text         TEXT,
+    published_url          TEXT,
+    status                 TEXT NOT NULL DEFAULT 'pending'
+                           CHECK (status IN ('pending','published','failed',
+                                             'no_permission','skipped')),
+    error_message          TEXT,
+    published_at           TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_reply_publications_task
+    ON reply_publications (task_id, status);
