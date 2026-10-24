@@ -311,3 +311,49 @@ def test_verify_callback_missing_headers(client, monkeypatch):
     })
     assert r.status_code == 403
     assert "missing" in r.json()["detail"]
+
+
+def test_startup_schema_migration_adds_columns(tmp_path, monkeypatch):
+    """模拟线上旧库：reply_drafts 无 reason、reply_approvals 无 reviewer_name，
+    启动 init_schema 后自动补列（回归 RGI-014 踩坑）。"""
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "old.db"))
+    monkeypatch.setenv("REDDIT_API_KEY", API_KEY)
+    from collector import storage
+
+    conn = storage.connect(str(tmp_path / "old.db"))
+    # 建旧版表（无 reason / reviewer_name）
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS reply_drafts (
+            draft_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id INTEGER NOT NULL,
+            draft_text TEXT NOT NULL,
+            model_provider TEXT NOT NULL DEFAULT 'deepseek',
+            model_name TEXT,
+            brand_voice_version TEXT NOT NULL DEFAULT 'v1',
+            knowledge_version TEXT NOT NULL DEFAULT 'v1',
+            draft_version INTEGER NOT NULL DEFAULT 1,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS reply_approvals (
+            approval_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id INTEGER NOT NULL,
+            draft_version INTEGER NOT NULL DEFAULT 1,
+            reviewer_id TEXT,
+            action TEXT NOT NULL,
+            approved_text TEXT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            approved_at TIMESTAMP,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+    )
+    conn.close()
+    # 走完整 init_schema（含迁移）
+    conn2 = storage.connect(str(tmp_path / "old.db"))
+    storage.init_schema(conn2, "sql/schema.sql")
+    cols_d = {r[1] for r in conn2.execute("PRAGMA table_info(reply_drafts)")}
+    cols_a = {r[1] for r in conn2.execute("PRAGMA table_info(reply_approvals)")}
+    conn2.close()
+    assert "reason" in cols_d
+    assert "reviewer_name" in cols_a

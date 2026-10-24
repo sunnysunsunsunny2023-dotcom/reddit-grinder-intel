@@ -16,6 +16,8 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Header, HTTPException, Query, Request
 from pydantic import BaseModel
 
@@ -30,7 +32,33 @@ from .trends import classify_signal
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Reddit Grinder Intelligence API", version="0.1.0")
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    """启动时确保 schema 就绪（幂等迁移：新增列/新表对线上库自动补齐）。
+
+    历史教训（v0.2.10）：API 服务此前不执行 init_schema，schema.sql 对
+    已存在的表不会自动补列（CREATE TABLE IF NOT EXISTS 仅建新表），
+    导致 reply_drafts 新增 reason 列后 insert_draft 直接 500。
+    """
+    try:
+        from collector.storage import connect, init_schema
+
+        path = db.get_database_path()
+        conn = connect(path)
+        schema_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sql", "schema.sql")
+        if not os.path.exists(schema_path):
+            schema_path = "sql/schema.sql"
+        init_schema(conn, schema_path)
+        conn.close()
+        logger.info("Schema ensured at startup (migrations applied)")
+    except Exception as exc:  # noqa: BLE001
+        # 不阻断启动：大多数读接口不依赖新列；写接口在列缺失时会返回明确错误
+        logger.error("startup schema init failed: %s", exc)
+    yield
+
+
+app = FastAPI(title="Reddit Grinder Intelligence API", version="0.1.0", lifespan=_lifespan)
 
 # ------------------------------------------------------------
 # 鉴权

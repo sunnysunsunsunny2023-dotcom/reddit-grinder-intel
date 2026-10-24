@@ -158,7 +158,9 @@ def test_daily_context_window_matches_batch_period(tmp_path):
     """
     import datetime as dt
 
-    now = dt.datetime.now(dt.timezone.utc)
+    # 固定确定性时间（如 11:11:03），避免真实 now 在整点前几分钟运行时
+    # edge_post_time 落在 old_start 之后导致前提断言偶发失败（RGI-014 修复）
+    now = dt.datetime(2026, 10, 24, 11, 11, 3, tzinfo=dt.timezone.utc)
     floor_start = now.replace(minute=0, second=0, microsecond=0) - dt.timedelta(hours=24)
     edge_post_time = floor_start + dt.timedelta(minutes=2)  # 如 11:02
 
@@ -187,7 +189,7 @@ def test_daily_context_default_start_floors_to_hour(tmp_path):
     """不传 start 时默认起点 = floor(now-24h)，与 _resolve_period 一致。"""
     import datetime as dt
 
-    now = dt.datetime.now(dt.timezone.utc)
+    now = dt.datetime(2026, 10, 24, 11, 11, 3, tzinfo=dt.timezone.utc)
     floor_start = now.replace(minute=0, second=0, microsecond=0) - dt.timedelta(hours=24)
     edge_post_time = floor_start + dt.timedelta(minutes=2)
 
