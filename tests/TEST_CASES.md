@@ -162,3 +162,19 @@
 - **回归用例**：
   - `tests/test_reply_approval.py`：approve 正常流转+重复审批 409；edit_approve 缺文本 422/带文本锁定；reject/skip 终态；manual_publish 未审批 422/审批后发布成功/重复 409；regenerate 仅审计不改状态；audit-log；review-push dry_run（五按钮齐全+评论原文+草稿）；回调未配置 503/错误签名 403/challenge 回显/卡片 action approve+防并发 409/缺头 403
 - **版本**：v0.2.10（Phase 2 飞书审批闭环；Phase 3 ChatGPT MCP/知识库待续）
+
+### RGI-014b：Phase 2 线上部署踩坑 — API 服务启动未迁移 schema 导致 500 + 线上全链路验证
+- **现象**：v0.2.10 部署成功但 `POST /api/geimori/draft-reply` 落库返回 500
+- **根因**：`CREATE TABLE IF NOT EXISTS` 只建新表、不给已存在表补列；schema.sql 新增 reply_drafts.reason / reply_approvals.reviewer_name 后，线上库列缺失 → insert_draft 插入 8 列时 SQLite 报错（此前 collector 定时器跑过 init_schema，但 API 服务启动不执行）
+- **修复**：`app/main.py` 增加 FastAPI lifespan，启动时 `collector.storage.init_schema()` 幂等执行 schema + 迁移（路径优先相对仓库 sql/schema.sql，回退 "sql/schema.sql"）；迁移失败不阻断启动、写接口返回明确错误
+- **附带**：`test_aggregate.py` 两个时间敏感测试改用固定 now（真实 now 在整点前几分钟运行时边界前提断言偶发失败）
+- **回归用例**：`test_reply_approval.py::test_startup_schema_migration_adds_columns`（旧库无新列 → init_schema 自动补列）
+- **线上实测（全部通过）**：
+  - draft-reply 落库 task#1 P1/product_complaint confidence 0.95 → draft_ready
+  - review-push dry_run：卡片标题 "Geimori 回复审核 · P1 紧急"、五按钮齐全、含评论原文+草稿
+  - reply-approve approve → approved + effective 审批 + approved_text 锁定；重复 approve → 409 "task no longer in draft_ready"
+  - manual-publish → published（final_text=锁定文本）；重复发布 → 409 "already published"
+  - reject → rejected；edit_approve 自定义文本 → approved + 文本锁定
+  - audit-log 3 条完整；reply-stats 状态分布正确
+  - feishu callback 未配置 → 503 明确提示
+- **版本**：v0.2.10.1（Phase 2 完成）
