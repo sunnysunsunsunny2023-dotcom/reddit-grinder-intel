@@ -162,6 +162,33 @@ def brand_mentions(posts: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
     )["geimori"]}
 
 
+def brand_mention_posts(posts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """确定性筛出提到 Geimori 的原帖（供 Geimori Watch 附原帖链接）。
+
+    与 brand_mentions 同口径（GEIMORI_KEYWORDS 大小写不敏感子串匹配），
+    返回精简字段：post_id/title/subreddit/permalink/score/num_comments/created_utc。
+    """
+    out = []
+    for p in posts:
+        if not keywords.has_any(_text(p), keywords.GEIMORI_KEYWORDS):
+            continue
+        cu = p.get("created_utc")
+        if hasattr(cu, "isoformat"):
+            cu = cu.isoformat()
+        out.append(
+            {
+                "post_id": str(p.get("post_id") or ""),
+                "title": str(p.get("title") or ""),
+                "subreddit": str(p.get("subreddit") or ""),
+                "permalink": str(p.get("permalink") or ""),
+                "score": int(p.get("score") or 0),
+                "num_comments": int(p.get("num_comments") or 0),
+                "created_utc": cu if cu is not None else None,
+            }
+        )
+    return out
+
+
 def competitor_mentions(posts: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
     """竞品 mentions（mention share，禁止说成 market share）。"""
     return mention_stats(posts, keywords.COMPETITOR_KEYWORDS)
@@ -257,6 +284,7 @@ def build_daily_context(
     subreddit: Optional[str] = None,
     start: Optional[dt.datetime] = None,
     end: Optional[dt.datetime] = None,
+    now: Optional[dt.datetime] = None,
 ) -> Dict[str, Any]:
     """组装 Daily API 所需的确定性上下文（不含 LLM 产物）。
 
@@ -264,11 +292,14 @@ def build_daily_context(
     period_start/period_end；缺省时用 floor(now-24h) 作为起点，避免
     窗口起点秒级漂移导致边界帖被漏（RGI-009 回归）。
 
+    now 仅供测试注入固定时间（RGI-014 时间敏感测试），生产缺省取真实时间。
+
     Returns:
         {posts, statistics, baseline_7d, baseline_30d, topic_trends,
-         brand_trends, competitor_trends, signal_alerts, top_posts}
+         brand_trends, competitor_trends, geimori_mention_posts,
+         signal_alerts, top_posts}
     """
-    now = _now()
+    now = now or _now()
     start_24h = start or _floor_to_hour(now - dt.timedelta(hours=24))
     posts_24h = query_posts(conn, start_24h, end=end, subreddit=subreddit)
 
@@ -310,6 +341,7 @@ def build_daily_context(
         "topic_trends": topic_trends,
         "brand_trends": brand_mentions(posts_24h),
         "competitor_trends": competitor_mentions(posts_24h),
+        "geimori_mention_posts": brand_mention_posts(posts_24h),
         "signal_alerts": alerts,
         "top_posts": top_posts(posts_24h),
     }

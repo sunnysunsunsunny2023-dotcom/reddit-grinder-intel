@@ -176,6 +176,7 @@ def build_pulse(payload: Dict[str, Any], report_date: Optional[str] = None) -> D
                     else ""
                 )
             ),
+            "posts": _as_list(payload.get("geimori_mention_posts")),
         },
         "today_actions": actions,
         "generated_at": dt.datetime.now(_CST).strftime("%Y-%m-%d %H:%M:%S"),
@@ -309,11 +310,25 @@ def render_html(pulse: Dict[str, Any]) -> str:
 
     # Geimori watch
     gw = pulse["geimori_watch"]
+    gw_posts_html = ""
+    if gw["has_mention"] and gw.get("posts"):
+        gw_items = []
+        for p in gw["posts"][:10]:
+            permalink = str(p.get("permalink") or "")
+            href = permalink if permalink.startswith("http") else "https://www.reddit.com" + permalink
+            sub = str(p.get("subreddit") or "")
+            title = _e(p.get("title") or "(untitled)")
+            sub_html = f'<span class="gw-sub">r/{_e(sub)}</span>' if sub else ""
+            gw_items.append(
+                f'<li><a class="post-link" href="{href}" target="_blank" '
+                f'rel="noopener noreferrer">{title}</a>{sub_html}</li>'
+            )
+        gw_posts_html = f'<ul class="geimori-posts">{"".join(gw_items)}</ul>'
     if gw["has_mention"]:
         geimori_html = (
             '<section class="panel geimori geimori-hit">'
             '<h2>Geimori Watch</h2>'
-            f'<p class="geimori-detail">{_e(gw["detail"])}</p></section>'
+            f'<p class="geimori-detail">{_e(gw["detail"])}</p>{gw_posts_html}</section>'
         )
     else:
         geimori_html = (
@@ -496,6 +511,9 @@ _PAGE_TEMPLATE = """<!doctype html>
   .geimori-hit {{ border-left: 4px solid var(--status-emerging); background: #fbf3e6; }}
   .geimori-clear {{ border-left: 4px solid var(--status-stable); }}
   .geimori-detail {{ margin: 0; }}
+  .geimori-posts {{ margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; }}
+  .geimori-posts li {{ display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; font-size: 13px; }}
+  .geimori-posts .gw-sub {{ color: var(--ink-soft); font-size: 12px; font-family: var(--font-mono); }}
   .action-item {{
     padding: 12px 0; border-bottom: 1px solid var(--line);
   }}

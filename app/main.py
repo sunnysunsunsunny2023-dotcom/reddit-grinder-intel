@@ -262,6 +262,7 @@ def analysis_batch(
             "topic_trends": context.get("topic_trends", {}),
             "brand_trends": context.get("brand_trends", {}),
             "competitor_trends": context.get("competitor_trends", {}),
+            "geimori_mention_posts": context.get("geimori_mention_posts", []),
             "analysis": result,
         }
     finally:

@@ -110,6 +110,38 @@ def test_render_empty_alerts(tmp_path):
     assert "未检出需要标记" in html_text
 
 
+def test_geimori_watch_shows_mention_post_links():
+    """Geimori Watch 命中时附原帖链接（由阿里云侧 geimori_mention_posts 提供）。"""
+    payload = _payload()
+    payload["geimori_mention_posts"] = [
+        {
+            "post_id": "g1",
+            "title": "Geimori GU63 first impressions",
+            "subreddit": "Coffee",
+            "permalink": "/r/Coffee/comments/g1/geimori/",
+            "score": 42,
+            "num_comments": 9,
+            "created_utc": "2026-09-30T02:42:49",
+        }
+    ]
+    pulse = build_pulse(payload, report_date="2026-09-30")
+    assert pulse["geimori_watch"]["has_mention"] is True
+    assert pulse["geimori_watch"]["posts"][0]["post_id"] == "g1"
+    html_text = render_html(pulse)
+    assert 'class="geimori-posts"' in html_text
+    assert "https://www.reddit.com/r/Coffee/comments/g1/geimori/" in html_text
+    assert "Geimori GU63 first impressions" in html_text
+
+
+def test_geimori_watch_no_posts_when_missing():
+    """旧 payload 无 geimori_mention_posts 字段时兼容，不渲染链接列表。"""
+    payload = _payload()
+    pulse = build_pulse(payload, report_date="2026-09-30")
+    assert pulse["geimori_watch"]["posts"] == []
+    html_text = render_html(pulse)
+    assert 'class="geimori-posts"' not in html_text
+
+
 def test_build_pulse_tolerates_missing_llm_fields():
     payload = _payload()
     payload["analysis"] = {}

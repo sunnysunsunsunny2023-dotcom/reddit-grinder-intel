@@ -45,6 +45,27 @@ def test_competitor_mentions(sample_posts):
     assert comp["fellow"]["mentions"] == 0
 
 
+def test_brand_mention_posts(sample_posts):
+    """Geimori Watch 原帖：确定性筛出提到 Geimori 的帖子（供链接展示）。"""
+    hits = aggregate.brand_mention_posts(sample_posts)
+    assert [p["post_id"] for p in hits] == ["p2"]  # p2 命中 Geimori/GU63
+    p = hits[0]
+    assert p["title"] == "Just got my Geimori GU63"
+    assert p["subreddit"] == "pourover"
+    assert p["permalink"].startswith("/r/pourover/")
+    assert isinstance(p["score"], int) and isinstance(p["num_comments"], int)
+    assert isinstance(p["created_utc"], str)  # 已转 isoformat，可 JSON 化
+    assert p["post_id"] == "p2"
+
+
+def test_brand_mention_posts_empty():
+    posts = [
+        make_post("x1", "Best budget burr grinder?", "no brand here"),
+        make_post("x2", "Niche vs DF64", "competitor talk only"),
+    ]
+    assert aggregate.brand_mention_posts(posts) == []
+
+
 def test_top_posts_ranking(sample_posts):
     top = aggregate.top_posts(sample_posts, limit=2)
     assert top[0]["post_id"] == "p1"  # 120+45=165 最高
@@ -201,7 +222,8 @@ def test_daily_context_default_start_floors_to_hour(tmp_path):
     )
     conn = _make_db(tmp_path, [edge_post])
     try:
-        ctx = aggregate.build_daily_context(conn)
+        # 注入固定 now：不传 start 时默认起点 = floor(now-24h)，必须与 _resolve_period 一致
+        ctx = aggregate.build_daily_context(conn, now=now)
         kpi = ctx["statistics"]
         assert kpi["total_new_posts"] == 1, f"默认窗口必须含边界帖, got {kpi}"
         assert kpi["geimori_mentions"] == 1

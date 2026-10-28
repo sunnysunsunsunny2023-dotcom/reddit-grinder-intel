@@ -178,3 +178,16 @@
   - audit-log 3 条完整；reply-stats 状态分布正确
   - feishu callback 未配置 → 503 明确提示
 - **版本**：v0.2.10.1（Phase 2 完成）
+
+### RGI-015：Geimori Watch 附原帖链接（用户需求 2026-10-28）
+- **需求**：Daily Pulse 的 Geimori Watch 面板命中 Geimori 时，附上涉及 Geimori 的原帖链接（title 可点击跳 reddit.com），便于直接核对口碑来源。
+- **实现**：
+  - `app/aggregate.py`：新增确定性 `brand_mention_posts(posts)`（与 brand_mentions 同口径 GEIMORI_KEYWORDS 子串匹配），返回精简字段 post_id/title/subreddit/permalink/score/num_comments/created_utc（created_utc 转 isoformat 可 JSON 化）；`build_daily_context` 返回值增加 `geimori_mention_posts`。
+  - `app/main.py`：analysis-batch 响应增加 `geimori_mention_posts`（context 字段透传，缺省 []）。
+  - `coze/render_daily.py`：build_pulse 的 geimori_watch 增加 `posts`（取 payload.geimori_mention_posts，容错 _as_list）；Geimori Watch 面板 detail 下方渲染 `geimori-posts` 链接列表（≤10 条，permalink 非 http 前缀自动补 reddit.com 域名）；CSS 新增 .geimori-posts/.gw-sub。
+- **兼容**：旧 payload 无 geimori_mention_posts 字段 → posts=[]，不渲染链接列表（无回归）。
+- **回归用例**：
+  - `tests/test_aggregate.py::test_brand_mention_posts`（sample_posts 只 p2 命中、字段精简、created_utc 已字符串化）、`test_brand_mention_posts_empty`（无品牌命中返回 []）
+  - `tests/test_render_daily.py::test_geimori_watch_shows_mention_post_links`（pulse.posts 有值 + 渲染含 geimori-posts 与 https://www.reddit.com 链接）、`test_geimori_watch_no_posts_when_missing`（缺字段不渲染链接列表）
+- **版本**：v0.3.0
+- **附带修复**：`build_daily_context` 增加可注入 `now` 参数（生产缺省真实时间，仅测试用）；`test_daily_context_default_start_floors_to_hour` 传固定 now，消除跨日期漂移导致 CI 偶发失败（RGI-009/RGI-014 同族时间敏感测试）
