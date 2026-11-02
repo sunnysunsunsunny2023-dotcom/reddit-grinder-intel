@@ -229,3 +229,35 @@ def test_daily_context_default_start_floors_to_hour(tmp_path):
         assert kpi["geimori_mentions"] == 1
     finally:
         conn.close()
+
+
+def test_compute_kpi_mikuni_t38_not_geimori():
+    """RGI-016 回归：Mikuni T38 化油器帖不计入 geimori_mentions。"""
+    posts = [
+        make_post(
+            "r1", "Help with a Yamaha Virago 750 carburetor",
+            "The carburetor is Mikuni T38 and it pops when the throttle is opened.",
+            subreddit="pourover", score=3, comments=0,
+        ),
+        make_post(
+            "r2", "Geimori T38 grinder first impressions",
+            "uniform grind, quiet, love it", score=12, comments=5,
+        ),
+        make_post(
+            "r3", "base64 junk",
+            "pH/j0FIaYBhEwtsn8bS/lAadASRu6A7w4OKVVCXUclvTZuXy4dBtZJJsSALoeVO53INuZT/tNGAXoS73ErT38",
+            subreddit="espresso", score=1, comments=0,
+        ),
+    ]
+    kpi = aggregate.compute_kpi(posts)
+    assert kpi["geimori_mentions"] == 1  # 仅 r2 真实提及
+
+
+def test_brand_mention_posts_excludes_mikuni():
+    """brand_mention_posts 不得包含 Mikuni T38 / base64 误报帖。"""
+    posts = [
+        make_post("m1", "Yamaha Virago carburetor", "Mikuni T38 pops on throttle"),
+        make_post("m2", "my geimori gu63 review", "grind consistency is great"),
+    ]
+    hits = aggregate.brand_mention_posts(posts)
+    assert [p["post_id"] for p in hits] == ["m2"]

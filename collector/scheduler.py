@@ -116,7 +116,8 @@ def run_once(
                 search_found = 0
                 if search_keywords:
                     search_new_posts, search_found = _run_search_backfill(
-                        conn, fetcher, subreddit, search_keywords, dedupe
+                        conn, fetcher, subreddit, search_keywords, dedupe,
+                        monitored_subreddits=set(subreddits),
                     )
                 search_new = len(search_new_posts)
 
@@ -169,6 +170,7 @@ def _run_search_backfill(
     subreddit: str,
     keywords: List[str],
     dedupe: DedupeFilter,
+    monitored_subreddits: Optional[set] = None,
 ) -> tuple[List[Dict[str, Any]], int]:
     """按关键词搜索补抓，返回 (新帖原始 dict 列表, 搜索到的帖子总数)。
 
@@ -176,6 +178,9 @@ def _run_search_backfill(
     因此把全部关键词合并为一个 OR 查询，每 subreddit 仅打 1 次搜索请求，
     减少命中限速窗口的概率。搜索到的历史帖走同一 dedupe，不重复入库。
     搜索失败不影响整体（记录 warning 后返回空列表）。
+
+    RGI-016：Reddit search 可能返回跨版结果（如搜 "t38" 混入 /r/virago 的
+    Mikuni T38 化油器帖），搜索补抓只保留监控 subreddit 白名单内的帖子。
     """
     query = " OR ".join(keywords)
     try:
@@ -185,6 +190,15 @@ def _run_search_backfill(
         return [], 0
     posts = [parse_post(r, subreddit) for r in raw]
     posts = [p for p in posts if p["post_id"] and p["created_utc"]]
+    if monitored_subreddits:
+        dropped = [p["subreddit"] for p in posts
+                   if p["subreddit"] not in monitored_subreddits]
+        posts = [p for p in posts if p["subreddit"] in monitored_subreddits]
+        if dropped:
+            logger.info(
+                "Search backfill dropped %d cross-subreddit post(s): %s",
+                len(dropped), sorted(set(dropped)),
+            )
     if not posts:
         return [], 0
     new_posts, _ = dedupe.split(posts)

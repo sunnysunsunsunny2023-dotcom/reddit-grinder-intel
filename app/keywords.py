@@ -112,9 +112,69 @@ NEGATIVE_WORDS: List[str] = [
 ]
 
 
+import re
+
+# Geimori 品牌词：几乎无歧义，词边界匹配即可
+GEIMORI_BRAND_KEYWORDS: List[str] = [
+    "geimori",
+    "mywirsh",
+    "wirsh",
+]
+
+# Geimori 机型词：歧义大（Mikuni T38 化油器、Yamaha Virago 等），
+# 需词边界 + 排除机械/化油器语境
+GEIMORI_MODEL_KEYWORDS: List[str] = [
+    "gu63",
+    "gu38",
+    "gu64",
+    "t38",
+    "t38 plus",
+    "t38 battery gen2",
+]
+
+# 机械/化油器/摩托车语境词：命中任一词时，机型词不作为 Geimori 提及
+# （RGI-016：Mikuni T38 化油器帖曾被 "t38" 子串误判为品牌提及）
+MECHANICAL_AMBIGUITY_TERMS: List[str] = [
+    "mikuni",
+    "carburetor",
+    "carburettor",
+    "virago",
+    "yamaha",
+    "motorcycle",
+    "throttle",
+    "bogging",
+    "pilot jet",
+    "main jet",
+]
+
+_BRAND_PATTERNS = [
+    re.compile(r"(?<![a-z0-9])" + re.escape(k) + r"(?![a-z0-9])", re.IGNORECASE)
+    for k in GEIMORI_BRAND_KEYWORDS
+]
+_MODEL_PATTERNS = [
+    re.compile(r"(?<![a-z0-9])" + re.escape(k) + r"(?![a-z0-9])", re.IGNORECASE)
+    for k in GEIMORI_MODEL_KEYWORDS
+]
+
+
 def normalize(text: str) -> str:
     """小写化用于子串匹配。"""
     return (text or "").lower()
+
+
+def has_geimori(text: str) -> bool:
+    """Geimori 品牌/机型提及判定（RGI-016）。
+
+    - 品牌词（geimori / mywirsh / wirsh）：词边界匹配，几乎无歧义。
+    - 机型词（gu63 / gu38 / gu64 / t38 ...）：词边界匹配，且文本不含
+      化油器/摩托车机械语境词（防止 "Mikuni T38" 化油器帖被误判）。
+    """
+    t = normalize(text)
+    if any(p.search(t) for p in _BRAND_PATTERNS):
+        return True
+    if any(term in t for term in MECHANICAL_AMBIGUITY_TERMS):
+        return False
+    return any(p.search(t) for p in _MODEL_PATTERNS)
 
 
 def count_keywords(text: str, keywords: List[str]) -> int:

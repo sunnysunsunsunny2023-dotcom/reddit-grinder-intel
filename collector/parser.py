@@ -58,7 +58,9 @@ def parse_post(raw: Dict[str, Any], subreddit: str) -> Dict[str, Any]:
     """
     return {
         "post_id": str(raw.get("id") or raw.get("name") or ""),
-        "subreddit": subreddit,
+        # 优先用帖子自身 subreddit（Reddit search 可能返回跨版结果，
+        # 如搜 "t38" 时混入 /r/virago 的 Mikuni T38 化油器帖；RGI-016）
+        "subreddit": str(raw.get("subreddit") or "") or subreddit,
         "title": raw.get("title") or "",
         "selftext": raw.get("selftext") or None,
         "created_utc": _epoch_to_utc(raw.get("created_utc")),

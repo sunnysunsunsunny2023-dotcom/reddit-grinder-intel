@@ -81,7 +81,7 @@ def collect_candidate_posts(
             "created_utc": r[5],
         }
         text = post["title"] + " " + post["selftext"]
-        if keywords.has_any(text, keywords.GEIMORI_KEYWORDS):
+        if keywords.has_geimori(text):
             brand.append(post)
         elif post["num_comments"] > 0:
             active.append(post)
