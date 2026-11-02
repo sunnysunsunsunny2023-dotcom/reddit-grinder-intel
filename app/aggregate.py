@@ -100,7 +100,7 @@ def compute_kpi(posts: List[Dict[str, Any]]) -> Dict[str, Any]:
         text = _text(post)
         if keywords.has_any(text, keywords.GRINDER_KEYWORDS):
             grinder += 1
-        if keywords.has_any(text, keywords.GEIMORI_KEYWORDS):
+        if keywords.has_geimori(text):
             geimori += 1
         if any(
             keywords.has_any(text, kws)
@@ -121,9 +121,17 @@ def compute_kpi(posts: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def mention_stats(
-    posts: List[Dict[str, Any]], keyword_groups: Dict[str, List[str]]
+    posts: List[Dict[str, Any]],
+    keyword_groups: Dict[str, List[str]],
+    matcher=None,
 ) -> Dict[str, Dict[str, Any]]:
     """对 keyword_groups 的每个 key 统计 mentions/unique_posts/engagement。
+
+    Args:
+        posts: 帖子列表。
+        keyword_groups: {key: 关键词列表}。
+        matcher: 可选专用匹配函数（如 keywords.has_geimori 用于品牌提及，
+            避免机型词被机械语境误判）；缺省用 keywords.has_any。
 
     Returns:
         {key: {"mentions": int, "unique_posts": int, "engagement": int}}
@@ -136,7 +144,11 @@ def mention_stats(
         engagement = 0
         for post in posts:
             text = _text(post)
-            if keywords.has_any(text, kws):
+            if matcher is not None:
+                hit = matcher(text)
+            else:
+                hit = keywords.has_any(text, kws)
+            if hit:
                 mentions += 1
                 unique += 1
                 engagement += int(post.get("score") or 0) + int(
@@ -156,10 +168,38 @@ def topic_mentions(posts: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
 
 
 def brand_mentions(posts: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
-    """Geimori 品牌/产品线 mentions。"""
+    """Geimori 品牌/产品线 mentions（专用 has_geimori 口径，防机型词误报）。"""
     return {"geimori": mention_stats(
-        posts, {"geimori": keywords.GEIMORI_KEYWORDS}
+        posts, {"geimori": keywords.GEIMORI_KEYWORDS}, matcher=keywords.has_geimori
     )["geimori"]}
+
+
+def brand_mention_posts(posts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """确定性筛出提到 Geimori 的原帖（供 Geimori Watch 附原帖链接）。
+
+    与 brand_mentions 同口径（keywords.has_geimori：品牌词边界 + 机型词边界
+    且排除化油器/摩托车机械语境，防止 Mikuni T38 等误报），
+    返回精简字段：post_id/title/subreddit/permalink/score/num_comments/created_utc。
+    """
+    out = []
+    for p in posts:
+        if not keywords.has_geimori(_text(p)):
+            continue
+        cu = p.get("created_utc")
+        if hasattr(cu, "isoformat"):
+            cu = cu.isoformat()
+        out.append(
+            {
+                "post_id": str(p.get("post_id") or ""),
+                "title": str(p.get("title") or ""),
+                "subreddit": str(p.get("subreddit") or ""),
+                "permalink": str(p.get("permalink") or ""),
+                "score": int(p.get("score") or 0),
+                "num_comments": int(p.get("num_comments") or 0),
+                "created_utc": cu if cu is not None else None,
+            }
+        )
+    return out
 
 
 def competitor_mentions(posts: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
@@ -257,6 +297,7 @@ def build_daily_context(
     subreddit: Optional[str] = None,
     start: Optional[dt.datetime] = None,
     end: Optional[dt.datetime] = None,
+    now: Optional[dt.datetime] = None,
 ) -> Dict[str, Any]:
     """组装 Daily API 所需的确定性上下文（不含 LLM 产物）。
 
@@ -264,11 +305,14 @@ def build_daily_context(
     period_start/period_end；缺省时用 floor(now-24h) 作为起点，避免
     窗口起点秒级漂移导致边界帖被漏（RGI-009 回归）。
 
+    now 仅供测试注入固定时间（RGI-014 时间敏感测试），生产缺省取真实时间。
+
     Returns:
         {posts, statistics, baseline_7d, baseline_30d, topic_trends,
-         brand_trends, competitor_trends, signal_alerts, top_posts}
+         brand_trends, competitor_trends, geimori_mention_posts,
+         signal_alerts, top_posts}
     """
-    now = _now()
+    now = now or _now()
     start_24h = start or _floor_to_hour(now - dt.timedelta(hours=24))
     posts_24h = query_posts(conn, start_24h, end=end, subreddit=subreddit)
 
@@ -310,6 +354,7 @@ def build_daily_context(
         "topic_trends": topic_trends,
         "brand_trends": brand_mentions(posts_24h),
         "competitor_trends": competitor_mentions(posts_24h),
+        "geimori_mention_posts": brand_mention_posts(posts_24h),
         "signal_alerts": alerts,
         "top_posts": top_posts(posts_24h),
     }

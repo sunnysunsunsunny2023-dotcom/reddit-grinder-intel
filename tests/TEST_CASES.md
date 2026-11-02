@@ -178,3 +178,31 @@
   - audit-log 3 条完整；reply-stats 状态分布正确
   - feishu callback 未配置 → 503 明确提示
 - **版本**：v0.2.10.1（Phase 2 完成）
+
+### RGI-015：Geimori Watch 附原帖链接（用户需求 2026-10-28）
+- **需求**：Daily Pulse 的 Geimori Watch 面板命中 Geimori 时，附上涉及 Geimori 的原帖链接（title 可点击跳 reddit.com），便于直接核对口碑来源。
+- **实现**：
+  - `app/aggregate.py`：新增确定性 `brand_mention_posts(posts)`（与 brand_mentions 同口径 GEIMORI_KEYWORDS 子串匹配），返回精简字段 post_id/title/subreddit/permalink/score/num_comments/created_utc（created_utc 转 isoformat 可 JSON 化）；`build_daily_context` 返回值增加 `geimori_mention_posts`。
+  - `app/main.py`：analysis-batch 响应增加 `geimori_mention_posts`（context 字段透传，缺省 []）。
+  - `coze/render_daily.py`：build_pulse 的 geimori_watch 增加 `posts`（取 payload.geimori_mention_posts，容错 _as_list）；Geimori Watch 面板 detail 下方渲染 `geimori-posts` 链接列表（≤10 条，permalink 非 http 前缀自动补 reddit.com 域名）；CSS 新增 .geimori-posts/.gw-sub。
+- **兼容**：旧 payload 无 geimori_mention_posts 字段 → posts=[]，不渲染链接列表（无回归）。
+- **回归用例**：
+  - `tests/test_aggregate.py::test_brand_mention_posts`（sample_posts 只 p2 命中、字段精简、created_utc 已字符串化）、`test_brand_mention_posts_empty`（无品牌命中返回 []）
+  - `tests/test_render_daily.py::test_geimori_watch_shows_mention_post_links`（pulse.posts 有值 + 渲染含 geimori-posts 与 https://www.reddit.com 链接）、`test_geimori_watch_no_posts_when_missing`（缺字段不渲染链接列表）
+- **版本**：v0.3.0
+- **附带修复**：`build_daily_context` 增加可注入 `now` 参数（生产缺省真实时间，仅测试用）；`test_daily_context_default_start_floors_to_hour` 传固定 now，消除跨日期漂移导致 CI 偶发失败（RGI-009/RGI-014 同族时间敏感测试）
+
+## RGI-016（2026-11-02）：Mikuni T38 化油器帖误判 Geimori 提及
+- **现象**：Reddit Daily Pulse 显示"Geimori 3 次提及"，实为 3 条 Yamaha Virago 摩托车化油器帖（正文含 Mikuni T38 化油器型号），被 `GEIMORI_KEYWORDS` 中 `"t38"` 子串匹配误判；另 1 条 base64 乱码帖撞上 "T38" 子串。
+- **根因**：
+  1. `keywords.has_any` 用纯子串匹配，`t38` 命中化油器型号与随机 base64；
+  2. 搜索补抓 `DEFAULT_SEARCH_KEYWORDS` 含 `t38`，Reddit search 返回跨版结果（/r/motorcycles、/r/virago），`parse_post` 写死查询版名导致 subreddit 字段错标。
+- **修复**：
+  - `keywords.has_geimori()`：品牌词（geimori/mywirsh/wirsh）词边界匹配；机型词（gu63/gu38/gu64/t38/t38 plus/t38 battery gen2）词边界 + 化油器/摩托车机械语境词（mikuni/carburetor/virago/yamaha/motorcycle/throttle/bogging/pilot jet/main jet）命中则不算提及；
+  - `aggregate`：compute_kpi / brand_mentions / brand_mention_posts 改用 has_geimori（mention_stats 支持 matcher 注入）；
+  - `comment_watcher`：品牌相关优先判定改用 has_geimori；
+  - `parser.parse_post`：subreddit 取帖子自身值（raw.subreddit），不写死查询版；
+  - `scheduler._run_search_backfill`：搜索补抓结果按监控 subreddit 白名单过滤跨版噪声。
+- **回归用例**：`tests/test_keywords.py`（5 用例）、`tests/test_aggregate.py::test_compute_kpi_mikuni_t38_not_geimori`、`test_brand_mention_posts_excludes_mikuni`。
+- **验证**：11-02 报告 payload 重算：旧逻辑 4 条全为误报，修复后 geimori 提及 0 条；全量 103 passed。
+- **版本**：v0.3.1
