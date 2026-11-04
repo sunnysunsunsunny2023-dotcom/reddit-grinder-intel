@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reddit 磨豆机情报 · Daily Pulse — 2026-11-04</title>
+<style>
+  :root {
+    --canvas: #f6f0e4;
+    --surface: #fffdf7;
+    --surface-soft: #efe5d3;
+    --ink: #3b2a1b;
+    --ink-soft: #7a624c;
+    --line: #e2d5bf;
+    --accent: #a96a3b;
+    --accent-strong: #7c4a24;
+    --accent-ink: #fffaf1;
+    --status-spike: #b0402e;
+    --status-emerging: #c2701e;
+    --status-rising: #a96a3b;
+    --status-stable: #5f7a46;
+    --status-declining: #8a857c;
+    --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --pad-page: clamp(16px, 4vw, 40px);
+    --r-sm: 6px;
+    --r-md: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.55;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: var(--pad-page); }
+  header.hero {
+    background: linear-gradient(135deg, #3b2a1b 0%, #5a4026 100%);
+    color: var(--accent-ink);
+    border-radius: var(--r-md);
+    padding: clamp(20px, 4vw, 34px);
+    margin-bottom: 20px;
+  }
+  header.hero .kicker {
+    font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: #e8c89a; margin: 0 0 6px; font-family: var(--font-mono);
+  }
+  header.hero h1 { margin: 0 0 10px; font-size: clamp(24px, 4vw, 34px); line-height: 1.2; }
+  header.hero .one-liner {
+    font-size: clamp(15px, 2.2vw, 18px); color: #f5ead6; max-width: 64ch; margin: 0;
+  }
+  h2 { font-size: clamp(18px, 2.4vw, 22px); margin: 0 0 12px; color: var(--ink); }
+  section.panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: clamp(16px, 3vw, 24px);
+    margin-bottom: 18px;
+  }
+  .kpi-summary {
+    background: var(--surface-soft); border-radius: var(--r-sm);
+    padding: 10px 14px; margin: 0 0 16px; color: var(--ink-soft); font-size: 14px;
+  }
+  .kpi-grid {
+    display: grid; gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  .kpi-card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-top: 3px solid var(--accent); border-radius: var(--r-md);
+    padding: 14px 16px;
+  }
+  .kpi-label { font-size: 12px; color: var(--ink-soft); margin-bottom: 4px; }
+  .kpi-value { font-size: clamp(22px, 3vw, 30px); font-weight: 700; font-family: var(--font-mono); color: var(--accent-strong); }
+  .kpi-hint { font-size: 11px; color: var(--ink-soft); margin-top: 6px; }
+  .alert-card {
+    border: 1px solid var(--line); border-left: 4px solid var(--ac, var(--accent));
+    border-radius: var(--r-sm); padding: 12px 14px; margin-bottom: 12px;
+    background: var(--surface);
+  }
+  .alert-card:last-child { margin-bottom: 0; }
+  .alert-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .alert-head h3 { margin: 0; font-size: 16px; }
+  .alert-status {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+    color: var(--ac, var(--accent)); font-weight: 700;
+  }
+  .alert-card p { margin: 8px 0 6px; color: var(--ink); }
+  .alert-links a { color: var(--accent-strong); text-decoration: none; font-size: 13px; }
+  .alert-links a:hover { text-decoration: underline; }
+  .pill {
+    display: inline-block; background: var(--surface-soft); color: var(--ink-soft);
+    border-radius: 999px; padding: 2px 10px; font-size: 11px; font-family: var(--font-mono);
+  }
+  .pill-weak { background: #f3e9d0; color: #8a6d3b; }
+  .pill-cat { background: #e9f0dd; color: #5f7a46; }
+  .post-item {
+    display: grid; grid-template-columns: 34px 1fr; gap: 12px;
+    padding: 12px 0; border-bottom: 1px solid var(--line);
+  }
+  .post-item:last-child { border-bottom: 0; }
+  .post-rank {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent); color: var(--accent-ink);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+  }
+  .post-item h3 { margin: 0 0 4px; font-size: 15px; line-height: 1.35; }
+  .post-why { margin: 0 0 6px; color: var(--ink-soft); font-size: 13px; }
+  .post-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: var(--ink-soft); font-family: var(--font-mono); }
+  .post-link { color: var(--accent-strong); text-decoration: none; font-family: var(--font-body); }
+  .post-link:hover { text-decoration: underline; }
+  .geimori { border-left-width: 4px; }
+  .geimori-hit { border-left: 4px solid var(--status-emerging); background: #fbf3e6; }
+  .geimori-clear { border-left: 4px solid var(--status-stable); }
+  .geimori-detail { margin: 0; }
+  .geimori-posts { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; }
+  .geimori-posts li { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; font-size: 13px; }
+  .geimori-posts .gw-sub { color: var(--ink-soft); font-size: 12px; font-family: var(--font-mono); }
+  .action-item {
+    padding: 12px 0; border-bottom: 1px solid var(--line);
+  }
+  .action-item:last-child { border-bottom: 0; }
+  .action-item h3 { margin: 0 0 4px; font-size: 15px; }
+  .action-why { margin: 0 0 8px; color: var(--ink-soft); font-size: 13px; }
+  .action-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+  .empty {
+    background: var(--surface-soft); color: var(--ink-soft);
+    border-radius: var(--r-sm); padding: 14px 16px; font-size: 14px;
+  }
+  footer.foot {
+    color: var(--ink-soft); font-size: 12px; line-height: 1.6; margin-top: 8px;
+  }
+  .foot-meta { font-family: var(--font-mono); }
+  .foot-source { margin-top: 4px; }
+  a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px;
+  }
+  @media (max-width: 520px) {
+    .post-item { grid-template-columns: 26px 1fr; }
+    .post-rank { width: 24px; height: 24px; font-size: 11px; }
+  }
+  @media print {
+    body { background: #fff; }
+    .wrap { max-width: none; padding: 0; }
+    section.panel, .kpi-card, .alert-card, header.hero { break-inside: avoid; }
+    .post-link, .alert-links a { color: inherit; text-decoration: underline; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <p class="kicker">Reddit Grinder Intelligence · Daily Pulse</p>
+    <h1>磨豆机社区日报 — 2026-11-04</h1>
+    <p class="one-liner">过去24小时磨豆机相关讨论量稳定，无异常信号；共69条新帖，其中33条与磨豆机相关，Geimori无提及，Fellow以13次提及领先竞品。</p>
+  </header>
+
+  <section class="panel" aria-label="今日 KPI">
+    <h2>今日 KPI</h2>
+    <p class="kpi-summary">total_new_posts=69, grinder_related_posts=33, grinder_ratio=0.4783, geimori_mentions=1, competitor_mentions=31, alert_count=0</p>
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">总新增帖</div><div class="kpi-value">69</div><div class="kpi-hint">过去 24h 抓取帖子总数</div></div>
+<div class="kpi-card"><div class="kpi-label">磨豆机相关</div><div class="kpi-value">33</div><div class="kpi-hint">命中磨豆机关键词的帖子</div></div>
+<div class="kpi-card"><div class="kpi-label">相关占比</div><div class="kpi-value">47.8%</div><div class="kpi-hint">磨豆机相关帖 / 总帖</div></div>
+<div class="kpi-card"><div class="kpi-label">Geimori 提及</div><div class="kpi-value">0</div><div class="kpi-hint">品牌名被讨论的次数</div></div>
+<div class="kpi-card"><div class="kpi-label">竞品提及</div><div class="kpi-value">31</div><div class="kpi-hint">竞品关键词命中数</div></div>
+<div class="kpi-card"><div class="kpi-label">高信号话题</div><div class="kpi-value">0</div><div class="kpi-hint">spike / emerging 级主题数</div></div>
+<div class="kpi-card"><div class="kpi-label">告警数</div><div class="kpi-value">0</div><div class="kpi-hint">本轮 signal alerts 数量</div></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="信号告警">
+    <h2>Signal Alerts</h2>
+    <div class="empty">过去 24h 未检出需要标记的信号主题。</div>
+  </section>
+
+  <section class="panel" aria-label="热门帖子">
+    <h2>Top Posts</h2>
+    <article class="post-item"><div class="post-rank">1</div><div><h3>One year of brewing</h3><p class="post-why">用户分享一年手冲经验，提及Kaldipress等设备，反映入门用户成长路径，可能影响新手设备选择。</p><div class="post-meta"><span>r/pourover / 0 score / 0 comments</span><a class="post-link" href="https://www.reddit.com/r/pourover/comments/1xnhwlr/one_year_of_brewing" target="_blank" rel="noopener noreferrer">查看原帖 ↗</a></div></div></article>
+<article class="post-item"><div class="post-rank">2</div><div><h3>Help me</h3><p class="post-why">用户求助研磨度（800-900微米）和萃取问题，体现研磨一致性对风味的关键影响，是潜在的教育内容切入点。</p><div class="post-meta"><span>r/pourover / 0 score / 0 comments</span><a class="post-link" href="https://www.reddit.com/r/pourover/comments/1xnhsrv/help_me" target="_blank" rel="noopener noreferrer">查看原帖 ↗</a></div></div></article>
+<article class="post-item"><div class="post-rank">3</div><div><h3>Manhattan RAINBOW advice</h3><p class="post-why">用户使用Outin Fino磨豆机进行手冲，展示磨豆机在具体冲煮场景中的应用，可关联产品性能讨论。</p><div class="post-meta"><span>r/pourover / 0 score / 0 comments</span><a class="post-link" href="https://www.reddit.com/r/pourover/comments/1xng01c/manhattan_rainbow_advice" target="_blank" rel="noopener noreferrer">查看原帖 ↗</a></div></div></article>
+<article class="post-item"><div class="post-rank">4</div><div><h3>New Weber EG-1</h3><p class="post-why">用户高度赞扬Weber EG-1的Ultra burrs在手冲中的表现，反映高端磨豆机市场对研磨质量的关注。</p><div class="post-meta"><span>r/pourover / 0 score / 0 comments</span><a class="post-link" href="https://www.reddit.com/r/pourover/comments/1xn6zb5/new_weber_eg1" target="_blank" rel="noopener noreferrer">查看原帖 ↗</a></div></div></article>
+<article class="post-item"><div class="post-rank">5</div><div><h3>Timemore S3 Light Roast Handling</h3><p class="post-why">用户询问Timemore S3对浅烘豆的处理能力，并考虑K-Ultra或S5，显示竞品在入门手磨市场的竞争态势。</p><div class="post-meta"><span>r/pourover / 0 score / 0 comments</span><a class="post-link" href="https://www.reddit.com/r/pourover/comments/1xn27zv/timemore_s3_light_roast_handling" target="_blank" rel="noopener noreferrer">查看原帖 ↗</a></div></div></article>
+  </section>
+
+  <section class="panel geimori geimori-clear"><h2>Geimori Watch</h2><p class="geimori-detail">过去24小时无Geimori提及（修正：Napier T38 汽车帖已按 RGI-017 排除，非品牌提及）。</p></section>
+
+  <section class="panel" aria-label="今日行动">
+    <h2>Today Actions</h2>
+    <article class="action-item"><h3>No immediate action required today</h3><p class="action-why">无异常信号，Geimori无提及（Napier T38 误报已按 RGI-017 排除），市场讨论稳定。</p><div class="action-badges"><span class="pill pill-cat">Community</span><span class="pill">HIGH</span><span class="pill">0 帖</span></div></article>
+  </section>
+
+  <footer class="foot">
+    <div class="foot-meta">生成时间 2026-11-04 20:51:32 · Batch #53 · 窗口 2026-11-03T11:00 → 2026-11-04T11:12</div><div class="foot-source">数据来源：Reddit 公开社区帖子，由阿里云侧抓取与 LLM 分析生成，仅供内部情报参考；原帖链接均指向 reddit.com 真实来源。</div>
+  </footer>
+</div>
+</body>
+</html>

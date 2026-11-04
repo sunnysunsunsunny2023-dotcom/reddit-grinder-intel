@@ -132,8 +132,9 @@ GEIMORI_MODEL_KEYWORDS: List[str] = [
     "t38 battery gen2",
 ]
 
-# 机械/化油器/摩托车语境词：命中任一词时，机型词不作为 Geimori 提及
-# （RGI-016：Mikuni T38 化油器帖曾被 "t38" 子串误判为品牌提及）
+# 机械/化油器/摩托车/汽车/自行车语境词：命中任一词时，机型词不作为 Geimori 提及
+# （RGI-016：Mikuni T38 化油器帖曾被 "t38" 子串误判为品牌提及；
+#   RGI-017：Napier T38 英国古董汽车/摩托车帖无化油器词，同样被 t38 误判）
 MECHANICAL_AMBIGUITY_TERMS: List[str] = [
     "mikuni",
     "carburetor",
@@ -145,6 +146,18 @@ MECHANICAL_AMBIGUITY_TERMS: List[str] = [
     "bogging",
     "pilot jet",
     "main jet",
+    # 汽车/摩托车/自行车品牌与车型语境（Napier T38 案例）
+    "napier",
+    "bicycle",
+    "bike",
+    "tourer",
+    "touring",
+    "edwardian",
+    "automobile",
+    "vehicle",
+    "motorbike",
+    "motor bike",
+    "classic car",
 ]
 
 _BRAND_PATTERNS = [

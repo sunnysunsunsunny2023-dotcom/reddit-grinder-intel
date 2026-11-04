@@ -206,3 +206,14 @@
 - **回归用例**：`tests/test_keywords.py`（5 用例）、`tests/test_aggregate.py::test_compute_kpi_mikuni_t38_not_geimori`、`test_brand_mention_posts_excludes_mikuni`。
 - **验证**：11-02 报告 payload 重算：旧逻辑 4 条全为误报，修复后 geimori 提及 0 条；全量 103 passed。
 - **版本**：v0.3.1
+
+---
+
+## RGI-017：Napier T38 汽车/自行车帖误判为 Geimori 提及（2026-11-04）
+
+- **现象**：2026-11-04 Daily Pulse 显示"Geimori 仅被提及 1 次"，实为 1 条 r/GlobalAutoDatabase 自动发布的汽车数据库帖（标题 "Napier T38 Colonial Deluxe British Rugged Edwardian Tourer"，Napier 为英国老牌汽车/摩托车品牌），被 `has_geimori()` 机型词 `t38` 命中。
+- **根因**：RGI-016 的机械语境排除词表只覆盖化油器/摩托车语境（mikuni/carburetor/yamaha/virago/motorcycle/throttle/bogging/pilot jet/main jet），Napier T38 帖不含这些词，但属于汽车/自行车/古董车语境，漏排。
+- **修复**：`keywords.MECHANICAL_AMBIGUITY_TERMS` 扩充汽车/自行车语境词：napier、bicycle、bike、tourer、touring、edwardian、automobile、vehicle、motorbike、motor bike、classic car。
+- **回归用例**：`tests/test_keywords.py::test_napier_t38_automobile_not_geimori`（Napier T38 不算提及；正常 T38 磨豆机帖仍算提及）。
+- **验证**：全量测试 108 passed；11-04 报告 payload 重算：geimori 提及 1 → 0，今日 HTML 已修正重渲染。
+- **版本**：v0.3.2

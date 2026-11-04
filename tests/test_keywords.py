@@ -35,6 +35,19 @@ def test_mechanical_context_exclusion():
     assert keywords.has_geimori(mixed)
 
 
+def test_napier_t38_automobile_not_geimori():
+    """RGI-017：Napier T38 英国古董汽车/摩托车数据库帖不得误判为 Geimori 提及。
+    2026-11-04 Daily Pulse 误报：r/GlobalAutoDatabase 自动帖标题含 T38，
+    无化油器词但属于汽车/自行车语境，此前被 t38 机型词命中。"""
+    napier = ("Napier T38 Colonial Deluxe British Rugged Edwardian Tourer")
+    assert not keywords.has_geimori(napier)
+    bicycle = "Vintage Napier T38 bicycle restoration project"
+    assert not keywords.has_geimori(bicycle)
+    # 正常磨豆机 T38 帖不受语境词影响
+    assert keywords.has_geimori("T38 grinder retention is low after RDT")
+    assert keywords.has_geimori("Geimori T38 battery gen2 lasts long")
+
+
 def test_word_boundary():
     assert not keywords.has_geimori("t380 display error")
     assert not keywords.has_geimori("notgu63x here")
