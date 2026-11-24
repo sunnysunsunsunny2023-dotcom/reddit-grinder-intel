@@ -30,6 +30,20 @@ jobs:
           pip install pytest -q
           python -m pytest tests/ -q
 
+      - name: GitHub runner 出口测 Reddit JSON（手动触发）
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          UA="linux:reddit-grinder-intel:v0.1.0 (by /u/reddit_grinder_intel; internal monitoring)"
+          echo "runner 出口: $(curl -s --max-time 10 https://api.ipify.org || echo unknown)"
+          echo "--- www.reddit.com new.json (limit=3) ---"
+          curl -s -o /tmp/runner_reddit.json -w "HTTP %{http_code} | total %{time_total}s | size %{size_download}B\n" \
+            -A "$UA" --max-time 15 "https://www.reddit.com/r/pourover/new.json?limit=3" || echo "curl failed"
+          head -c 200 /tmp/runner_reddit.json 2>/dev/null; echo ""
+          echo "--- oauth.reddit.com api/v1/me (无token探活) ---"
+          curl -s -o /tmp/runner_oauth.txt -w "HTTP %{http_code} | total %{time_total}s\n" \
+            -A "$UA" --max-time 15 "https://oauth.reddit.com/api/v1/me" || echo "curl failed"
+          head -c 200 /tmp/runner_oauth.txt 2>/dev/null; echo ""
+
       - name: Deploy Reddit Intel via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -128,6 +142,16 @@ jobs:
             curl -s -o /tmp/rl3.json -w "HTTP %{http_code} | total %{time_total}s | size %{size_download}B\n" \
               -A "$UA" --max-time 20 "https://redlib.perennialte.ch/r/pourover/new.json?limit=5" || echo "curl failed"
             head -c 300 /tmp/rl3.json 2>/dev/null; echo ""
+            echo "--- gateway.reddit.com desktopapi (pourover) ---"
+            curl -s -o /tmp/gw.json -w "HTTP %{http_code} | total %{time_total}s | size %{size_download}B\n" \
+              -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36" \
+              -H "Accept: application/json" --max-time 20 \
+              "https://gateway.reddit.com/desktopapi/v1/subreddits/pourover?rtj=only&allow_over18=1&include=prefsSubreddit&limit=5" || echo "curl failed"
+            head -c 300 /tmp/gw.json 2>/dev/null; echo ""
+            echo "--- oauth.reddit.com api/v1/me (无token探活) ---"
+            curl -s -o /tmp/oa.txt -w "HTTP %{http_code} | total %{time_total}s\n" \
+              -A "$UA" --max-time 15 "https://oauth.reddit.com/api/v1/me" || echo "curl failed"
+            head -c 200 /tmp/oa.txt 2>/dev/null; echo ""
 
       - name: Full verification on Aliyun (仅手动触发)
         if: github.event_name == 'workflow_dispatch'
