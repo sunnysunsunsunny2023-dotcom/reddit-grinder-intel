@@ -107,6 +107,15 @@ jobs:
             curl -s -o /tmp/ar.txt -w "HTTP %{http_code} | total %{time_total}s\n" \
               -A "$UA" --max-time 20 "https://api.reddit.com/api/v1/me" || echo "curl failed"
             head -c 200 /tmp/ar.txt 2>/dev/null; echo ""
+            echo "--- pullpush.io submission (浏览器UA) ---"
+            curl -s -o /tmp/pp.json -w "HTTP %{http_code} | total %{time_total}s | size %{size_download}B\n" \
+              -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36" \
+              --max-time 25 "https://api.pullpush.io/reddit/search/submission/?subreddit=pourover&size=5" || echo "curl failed"
+            head -c 300 /tmp/pp.json 2>/dev/null; echo ""
+            echo "--- r.jina.ai reader (reddit new) ---"
+            curl -s -o /tmp/jina.txt -w "HTTP %{http_code} | total %{time_total}s | size %{size_download}B\n" \
+              -A "$UA" --max-time 40 "https://r.jina.ai/https://www.reddit.com/r/pourover/new/" || echo "curl failed"
+            head -c 300 /tmp/jina.txt 2>/dev/null; echo ""
 
       - name: Full verification on Aliyun (仅手动触发)
         if: github.event_name == 'workflow_dispatch'
