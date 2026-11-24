@@ -116,6 +116,18 @@ jobs:
             curl -s -o /tmp/jina.txt -w "HTTP %{http_code} | total %{time_total}s | size %{size_download}B\n" \
               -A "$UA" --max-time 40 "https://r.jina.ai/https://www.reddit.com/r/pourover/new/" || echo "curl failed"
             head -c 300 /tmp/jina.txt 2>/dev/null; echo ""
+            echo "--- redlib 公共实例 (redlib.catsarch.com) ---"
+            curl -s -o /tmp/rl1.json -w "HTTP %{http_code} | total %{time_total}s | size %{size_download}B\n" \
+              -A "$UA" --max-time 20 "https://redlib.catsarch.com/r/pourover/new.json?limit=5" || echo "curl failed"
+            head -c 300 /tmp/rl1.json 2>/dev/null; echo ""
+            echo "--- redlib 公共实例 (rl.bloat.cat) ---"
+            curl -s -o /tmp/rl2.json -w "HTTP %{http_code} | total %{time_total}s | size %{size_download}B\n" \
+              -A "$UA" --max-time 20 "https://rl.bloat.cat/r/pourover/new.json?limit=5" || echo "curl failed"
+            head -c 300 /tmp/rl2.json 2>/dev/null; echo ""
+            echo "--- redlib 公共实例 (redlib.perennialte.ch) ---"
+            curl -s -o /tmp/rl3.json -w "HTTP %{http_code} | total %{time_total}s | size %{size_download}B\n" \
+              -A "$UA" --max-time 20 "https://redlib.perennialte.ch/r/pourover/new.json?limit=5" || echo "curl failed"
+            head -c 300 /tmp/rl3.json 2>/dev/null; echo ""
 
       - name: Full verification on Aliyun (仅手动触发)
         if: github.event_name == 'workflow_dispatch'
