@@ -80,6 +80,34 @@ jobs:
             echo "==> SQLite 数据文件"
             ls -lh /opt/reddit-intel/data/ 2>/dev/null || true
 
+      - name: Reddit endpoint diagnostics (Aliyun 出口 IP, 手动触发)
+        if: github.event_name == 'workflow_dispatch'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 5m
+          script: |
+            echo "==> Reddit 端点诊断（阿里云出口 IP）"
+            UA="linux:reddit-grinder-intel:v0.1.0 (by /u/reddit_grinder_intel; internal monitoring)"
+            echo "--- www.reddit.com new.json (limit=5) ---"
+            curl -s -o /tmp/rj.json -w "HTTP %{http_code} | total %{time_total}s | size %{size_download}B\n" \
+              -A "$UA" --max-time 20 "https://www.reddit.com/r/pourover/new.json?limit=5" || echo "curl failed"
+            head -c 200 /tmp/rj.json 2>/dev/null; echo ""
+            echo "--- www.reddit.com new.rss ---"
+            curl -s -o /tmp/rr.xml -w "HTTP %{http_code} | total %{time_total}s | size %{size_download}B\n" \
+              -A "$UA" --max-time 20 "https://www.reddit.com/r/pourover/new/.rss" || echo "curl failed"
+            head -c 200 /tmp/rr.xml 2>/dev/null; echo ""
+            echo "--- old.reddit.com new.json (limit=5) ---"
+            curl -s -o /tmp/orj.json -w "HTTP %{http_code} | total %{time_total}s | size %{size_download}B\n" \
+              -A "$UA" --max-time 20 "https://old.reddit.com/r/pourover/new.json?limit=5" || echo "curl failed"
+            head -c 200 /tmp/orj.json 2>/dev/null; echo ""
+            echo "--- api.reddit.com 基础探活 ---"
+            curl -s -o /tmp/ar.txt -w "HTTP %{http_code} | total %{time_total}s\n" \
+              -A "$UA" --max-time 20 "https://api.reddit.com/api/v1/me" || echo "curl failed"
+            head -c 200 /tmp/ar.txt 2>/dev/null; echo ""
+
       - name: Full verification on Aliyun (仅手动触发)
         if: github.event_name == 'workflow_dispatch'
         uses: appleboy/ssh-action@v1.0.3
